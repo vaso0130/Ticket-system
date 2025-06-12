@@ -1,4 +1,4 @@
-import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
+import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
 
   // Users: username, password, roles[]
   const users = [
@@ -1301,13 +1301,13 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     const data = {
       venues, concerts, tickets
     };
-    await exportToXLSX(data);
+    await exportToJSON(data);
   });
 
   importDbBtn.addEventListener('click', () => dbFileInput.click());
   dbFileInput.addEventListener('change', async (e) => {
     if(e.target.files.length){
-      const result = await importFromXLSX(e.target.files[0]);
+      const result = await importFromJSON(e.target.files[0]);
       if(result.venues) venues = result.venues;
       if(result.concerts) concerts = result.concerts;
       if(result.tickets) tickets = result.tickets;
