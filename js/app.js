@@ -1,4 +1,4 @@
-import { fetchFromDB, saveToDB } from './db.js';
+import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
 
   // Users: username, password, roles[]
   const users = [
@@ -33,6 +33,25 @@ import { fetchFromDB, saveToDB } from './db.js';
   const app = document.getElementById('app');
   const mainContent = document.getElementById('mainContent');
   const logoutBtn = document.getElementById('logoutBtn');
+  const importDbBtn = document.getElementById('importDbBtn');
+  const exportDbBtn = document.getElementById('exportDbBtn');
+  const dbFileInput = document.getElementById('dbFileInput');
+
+  function showHeaderButtons(show){
+    const display = show ? 'inline-block' : 'none';
+    logoutBtn.style.display = display;
+    importDbBtn.style.display = display;
+    exportDbBtn.style.display = display;
+  }
+
+  function setMainHTML(html){
+    mainContent.innerHTML = html;
+    animateContent();
+  }
+
+  function animateContent(){
+    anime({ targets: '#mainContent', opacity: [0,1], duration: 600, easing: 'easeOutQuad' });
+  }
 
   // Persistent storage keys
   const STORAGE_KEYS = {
@@ -83,8 +102,8 @@ import { fetchFromDB, saveToDB } from './db.js';
 
   // Render login form (username + password)
   function renderLogin() {
-    logoutBtn.style.display = 'none';
-    mainContent.innerHTML = `
+    showHeaderButtons(false);
+    setMainHTML(`
       <form id="loginForm">
         <h2>登入</h2>
         <label for="username">使用者名稱</label>
@@ -111,7 +130,7 @@ import { fetchFromDB, saveToDB } from './db.js';
         currentRole = null;
         saveLogin();
         loadData();
-        logoutBtn.style.display = 'inline-block';
+        showHeaderButtons(true);
         if(user.roles.length === 1){
           // If only one role, auto select
           currentRole = user.roles[0];
@@ -132,8 +151,8 @@ import { fetchFromDB, saveToDB } from './db.js';
 
   // 忘記密碼流程
   function renderForgotPassword() {
-    logoutBtn.style.display = 'none';
-    mainContent.innerHTML = `
+    showHeaderButtons(false);
+    setMainHTML(`
       <form id="forgotPwdForm">
         <h2>忘記密碼</h2>
         <label for="fpUsername">使用者名稱</label>
@@ -219,8 +238,8 @@ import { fetchFromDB, saveToDB } from './db.js';
 
   // 新增：註冊表單
   function renderRegister() {
-    logoutBtn.style.display = 'none';
-    mainContent.innerHTML = `
+    showHeaderButtons(false);
+    setMainHTML(`
       <form id="registerForm">
         <h2>註冊新帳號</h2>
         <label for="regUsername">使用者名稱</label>
@@ -282,11 +301,11 @@ import { fetchFromDB, saveToDB } from './db.js';
       renderLogin();
       return;
     }
-    logoutBtn.style.display = 'inline-block';
-    mainContent.innerHTML = `
+    showHeaderButtons(true);
+    setMainHTML(`
       <h2>選擇身分組</h2>
       <ul class="role-list" id="roleList"></ul>
-    `;
+    `);
     const ul = document.getElementById('roleList');
     currentUser.roles.forEach(role => {
       const li = document.createElement('li');
@@ -330,7 +349,7 @@ import { fetchFromDB, saveToDB } from './db.js';
         renderSpectatorDashboard();
         break;
       default:
-        mainContent.innerHTML = `<p>未知角色：${currentRole}</p>`;
+        setMainHTML(`<p>未知角色：${currentRole}</p>`);
     }
   }
 
@@ -338,7 +357,7 @@ import { fetchFromDB, saveToDB } from './db.js';
   // Admin: manage venues, ticketing, accounting, users
 
   function renderAdminDashboard(){
-    mainContent.innerHTML = `
+    setMainHTML(`
     <h2>管理者控制台</h2>
     <nav style="margin-bottom: 1rem;">
       <button id="adminUsersBtn">使用者帳號管理</button>
@@ -663,7 +682,7 @@ import { fetchFromDB, saveToDB } from './db.js';
   // Organizer: manage tickets and accounting (similar to admin but less features)
 
   function renderOrganizerDashboard(){
-    mainContent.innerHTML = `
+    setMainHTML(`
     <h2>主辦方控制台</h2>
     <nav style="margin-bottom: 1rem;">
       <button id="orgTicketsBtn">票務管理</button>
@@ -802,7 +821,7 @@ import { fetchFromDB, saveToDB } from './db.js';
   // Spectator: buy tickets, refund tickets
 
   function renderSpectatorDashboard(){
-    mainContent.innerHTML = `
+    setMainHTML(`
       <h2>觀眾專區</h2>
       <section>
         <h3>演唱會列表</h3>
@@ -1167,12 +1186,33 @@ import { fetchFromDB, saveToDB } from './db.js';
     }
   });
 
+  exportDbBtn.addEventListener('click', async () => {
+    const data = {
+      venues, concerts, tickets
+    };
+    await exportToXLSX(data);
+  });
+
+  importDbBtn.addEventListener('click', () => dbFileInput.click());
+  dbFileInput.addEventListener('change', async (e) => {
+    if(e.target.files.length){
+      const result = await importFromXLSX(e.target.files[0]);
+      if(result.venues) venues = result.venues;
+      if(result.concerts) concerts = result.concerts;
+      if(result.tickets) tickets = result.tickets;
+      saveData();
+      if(currentRole){
+        renderDashboard();
+      }
+    }
+  });
+
   // Initialization entry point
   export async function initApp() {
     loadLogin();
     await loadData();
     if(currentUser){
-      logoutBtn.style.display = 'inline-block';
+      showHeaderButtons(true);
       if(!currentRole){
         if(currentUser.roles.length === 1){
           currentRole = currentUser.roles[0];
