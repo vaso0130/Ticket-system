@@ -85,29 +85,19 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
 
   // Persistent storage keys
   const STORAGE_KEYS = {
-    VENUES: 'venues',
-    CONCERTS: 'concerts',
-    TICKETS: 'tickets',
     CURRENT_USER: 'currentUser',
     CURRENT_ROLE: 'currentRole'
   };
 
-  // Utility: save/load data. Currently uses localStorage but wired through
-  // DB helper functions so the persistence layer can be replaced easily.
+  // Utility: save/load data via the backend server
   async function saveData() {
-    await saveToDB(STORAGE_KEYS.VENUES, venues);
-    await saveToDB(STORAGE_KEYS.CONCERTS, concerts);
-    await saveToDB(STORAGE_KEYS.TICKETS, tickets);
+    await saveToDB({ venues, concerts, tickets });
   }
   async function loadData() {
-    const savedVenues = await fetchFromDB(STORAGE_KEYS.VENUES);
-    if (savedVenues) venues = savedVenues;
-
-    const savedConcerts = await fetchFromDB(STORAGE_KEYS.CONCERTS);
-    if (savedConcerts) concerts = savedConcerts;
-
-    const savedTickets = await fetchFromDB(STORAGE_KEYS.TICKETS);
-    if (savedTickets) tickets = savedTickets;
+    const data = await fetchFromDB();
+    if (data.venues) venues = data.venues;
+    if (data.concerts) concerts = data.concerts;
+    if (data.tickets) tickets = data.tickets;
   }
 
   // Save login & role to localStorage
@@ -502,6 +492,8 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <input type="text" id="venueLocation" required />
         <label for="venueCapacity">容量</label>
         <input type="number" id="venueCapacity" min="1" required />
+        <label for="venueImage">圖片</label>
+        <input type="file" id="venueImage" accept="image/*" />
         <button type="submit" style="margin-top:1rem;">新增場地</button>
         <p id="addVenueMsg" class="success" style="display:none;"></p>
         <p id="addVenueError" class="error" style="display:none;"></p>
@@ -513,6 +505,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       const name = document.getElementById('venueName').value.trim();
       const location = document.getElementById('venueLocation').value.trim();
       const capacity = parseInt(document.getElementById('venueCapacity').value);
+      const imageFile = document.getElementById('venueImage').files[0];
       const msg = document.getElementById('addVenueMsg');
       const err = document.getElementById('addVenueError');
       msg.style.display = 'none';
@@ -524,7 +517,15 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         return;
       }
       const id = venues.length ? Math.max(...venues.map(v=>v.id))+1 : 1;
-      venues.push({id, name, location, capacity});
+      let image = '';
+      if(imageFile){
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const resp = await fetch('/api/upload', {method:'POST', body: fd});
+        const result = await resp.json();
+        image = '/uploads/' + result.filename;
+      }
+      venues.push({id, name, location, capacity, image});
       saveData();
       msg.textContent = '新增場地成功！';
       msg.style.display = 'block';
@@ -541,6 +542,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <div style="flex-grow:1;">
           <strong>${v.name}</strong> <br/>
           地點: ${v.location} | 容量: ${v.capacity}
+          ${v.image ? `<br/><img src="${v.image}" style="max-width:100%;height:auto;">` : ''}
         </div>
       `;
       const delBtn = document.createElement('button');
@@ -571,8 +573,12 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <h4>新增演唱會</h4>
         <label for="concertTitle">標題</label>
         <input type="text" id="concertTitle" required />
-        <label for="concertDate">日期</label>
-        <input type="date" id="concertDate" required />
+        <label for="concertDates">日期 (可逗號分隔)</label>
+        <input type="text" id="concertDates" placeholder="YYYY-MM-DD,YYYY-MM-DD" required />
+        <label for="saleStart">開賣日期</label>
+        <input type="date" id="saleStart" required />
+        <label for="saleEnd">結束日期</label>
+        <input type="date" id="saleEnd" required />
         <label for="concertVenue">場地</label>
         <select id="concertVenue" required>
           <option value="" disabled selected>請選擇場地</option>
@@ -589,9 +595,11 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
           <input type="number" id="hotQty" min="0" required />
           <label for="normalPrice">一般區票價</label>
           <input type="number" id="normalPrice" min="0" required />
-          <label for="normalQty">一般區數量</label>
-          <input type="number" id="normalQty" min="0" required />
-        </fieldset>
+        <label for="normalQty">一般區數量</label>
+        <input type="number" id="normalQty" min="0" required />
+        <label for="concertImage">圖片</label>
+        <input type="file" id="concertImage" accept="image/*" />
+      </fieldset>
         <button type="submit" style="margin-top:1rem;">新增演唱會</button>
         <p id="addConcertMsg" class="success" style="display:none;"></p>
         <p id="addConcertError" class="error" style="display:none;"></p>
@@ -602,8 +610,12 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
     document.getElementById('addConcertForm').addEventListener('submit', e=>{
       e.preventDefault();
       const title = document.getElementById('concertTitle').value.trim();
-      const date = document.getElementById('concertDate').value;
+      const dates = document.getElementById('concertDates').value.split(',').map(d=>d.trim()).filter(d=>d);
+      const saleStart = document.getElementById('saleStart').value;
+      const saleEnd = document.getElementById('saleEnd').value;
       const venueId = parseInt(document.getElementById('concertVenue').value);
+      const imageFile = document.getElementById('concertImage').files[0];
+      const imageFile = document.getElementById('concertImage').files[0];
       const rockPrice = parseInt(document.getElementById('rockPrice').value);
       const rockQty = parseInt(document.getElementById('rockQty').value);
       const hotPrice = parseInt(document.getElementById('hotPrice').value);
@@ -616,7 +628,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       msg.style.display = 'none';
       err.style.display = 'none';
 
-      if(!title || !date || !venueId ||
+      if(!title || dates.length===0 || !venueId || !saleStart || !saleEnd ||
          isNaN(rockPrice) || isNaN(rockQty) ||
          isNaN(hotPrice) || isNaN(hotQty) ||
          isNaN(normalPrice) || isNaN(normalQty)) {
@@ -643,7 +655,15 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         {name: '熱區', price: hotPrice, capacity: hotQty, sold: 0},
         {name: '一般區', price: normalPrice, capacity: normalQty, sold: 0}
       ];
-      concerts.push({id, title, date, venueId, ticketsAvailable, ticketsSold: 0, zones});
+      let image = '';
+      if(imageFile){
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const resp = await fetch('/api/upload', {method:'POST', body: fd});
+        const result = await resp.json();
+        image = '/uploads/' + result.filename;
+      }
+      concerts.push({id, title, dates, saleStart, saleEnd, venueId, image, ticketsAvailable, ticketsSold: 0, zones});
       saveData();
       msg.textContent = '新增演唱會成功！';
       msg.style.display = 'block';
@@ -672,7 +692,9 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${c.title}</strong><br/>
-          日期: ${c.date} | 場地: ${venueName} <br/>
+          ${c.image ? `<img src="${c.image}" style="width:100%;max-height:150px;object-fit:cover;">` : ''}
+          日期: ${c.dates.join(' , ')} | 場地: ${venueName} <br/>
+          售票期間: ${c.saleStart} ~ ${c.saleEnd}<br/>
           ${zoneInfo}
         </div>
       `;
@@ -763,8 +785,12 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <h4>新增演唱會</h4>
         <label for="concertTitle">標題</label>
         <input type="text" id="concertTitle" required />
-        <label for="concertDate">日期</label>
-        <input type="date" id="concertDate" required />
+        <label for="concertDates">日期 (可逗號分隔)</label>
+        <input type="text" id="concertDates" placeholder="YYYY-MM-DD,YYYY-MM-DD" required />
+        <label for="saleStart">開賣日期</label>
+        <input type="date" id="saleStart" required />
+        <label for="saleEnd">結束日期</label>
+        <input type="date" id="saleEnd" required />
         <label for="concertVenue">場地</label>
         <select id="concertVenue" required>
           <option value="" disabled selected>請選擇場地</option>
@@ -783,6 +809,8 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
           <input type="number" id="normalPriceOrg" min="0" required />
           <label for="normalQtyOrg">一般區數量</label>
           <input type="number" id="normalQtyOrg" min="0" required />
+          <label for="concertImage">圖片</label>
+          <input type="file" id="concertImage" accept="image/*" />
         </fieldset>
         <button type="submit" style="margin-top:1rem;">新增演唱會</button>
         <p id="addConcertMsg" class="success" style="display:none;"></p>
@@ -794,7 +822,9 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
     document.getElementById('addConcertForm').addEventListener('submit', e=>{
       e.preventDefault();
       const title = document.getElementById('concertTitle').value.trim();
-      const date = document.getElementById('concertDate').value;
+      const dates = document.getElementById('concertDates').value.split(',').map(d=>d.trim()).filter(d=>d);
+      const saleStart = document.getElementById('saleStart').value;
+      const saleEnd = document.getElementById('saleEnd').value;
       const venueId = parseInt(document.getElementById('concertVenue').value);
       const rockPrice = parseInt(document.getElementById('rockPriceOrg').value);
       const rockQty = parseInt(document.getElementById('rockQtyOrg').value);
@@ -808,10 +838,10 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       msg.style.display = 'none';
       err.style.display = 'none';
 
-      if(!title || !date || !venueId ||
-         isNaN(rockPrice) || isNaN(rockQty) ||
-         isNaN(hotPrice) || isNaN(hotQty) ||
-         isNaN(normalPrice) || isNaN(normalQty)) {
+      if(!title || dates.length===0 || !venueId || !saleStart || !saleEnd ||
+          isNaN(rockPrice) || isNaN(rockQty) ||
+          isNaN(hotPrice) || isNaN(hotQty) ||
+          isNaN(normalPrice) || isNaN(normalQty)) {
         err.textContent = '所有欄位皆為必填且需有效';
         err.style.display = 'block';
         return;
@@ -834,7 +864,15 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         {name: '熱區', price: hotPrice, capacity: hotQty, sold: 0},
         {name: '一般區', price: normalPrice, capacity: normalQty, sold: 0}
       ];
-      concerts.push({id, title, date, venueId, ticketsAvailable, ticketsSold: 0, zones});
+      let image = '';
+      if(imageFile){
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const resp = await fetch('/api/upload', {method:'POST', body: fd});
+        const result = await resp.json();
+        image = '/uploads/' + result.filename;
+      }
+      concerts.push({id, title, dates, saleStart, saleEnd, venueId, image, ticketsAvailable, ticketsSold: 0, zones});
       saveData();
       msg.textContent = '新增演唱會成功！';
       msg.style.display = 'block';
@@ -853,7 +891,9 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${c.title}</strong><br/>
-          日期: ${c.date} | 場地: ${venueName} <br/>
+          ${c.image ? `<img src="${c.image}" style="width:100%;max-height:150px;object-fit:cover;">` : ''}
+          日期: ${c.dates.join(' , ')} | 場地: ${venueName} <br/>
+          售票期間: ${c.saleStart} ~ ${c.saleEnd}<br/>
           ${zoneInfo}
         </div>
       `;
@@ -931,7 +971,9 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${c.title}</strong><br/>
-          日期: ${c.date} | 場地: ${venueName} <br/>
+          ${c.image ? `<img src="${c.image}" style="width:100%;max-height:150px;object-fit:cover;">` : ''}
+          日期: ${c.dates.join(' , ')} | 場地: ${venueName} <br/>
+          售票期間: ${c.saleStart} ~ ${c.saleEnd}<br/>
           ${zoneInfo}
         </div>
       `;
@@ -946,10 +988,24 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         soldOut.style.color = '#e53935';
         soldOut.style.fontWeight = '600';
         soldOut.style.marginLeft = '0.5rem';
-        li.appendChild(soldOut);
+      li.appendChild(soldOut);
       }
       ul.appendChild(li);
     });
+  }
+
+  // Generate seat numbers sequentially per zone
+  function generateSeatNumbers(concertId, zoneName, qty){
+    const concert = concerts.find(c=>c.id===concertId);
+    if(!concert) return [];
+    const zone = concert.zones.find(z=>z.name===zoneName);
+    if(!zone) return [];
+    const start = zone.sold + 1;
+    const seats = [];
+    for(let i=0;i<qty;i++){
+      seats.push(start + i);
+    }
+    return seats;
   }
 
   // Show user ticket list with refund button
@@ -968,8 +1024,9 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${concert.title}</strong><br/>
-          日期: ${concert.date} | 場地: ${venues.find(v=>v.id===concert.venueId)?.name ?? '已刪除場地'} <br/>
+          日期: ${concert.dates.join(' , ')} | 場地: ${venues.find(v=>v.id===concert.venueId)?.name ?? '已刪除場地'} <br/>
           區域: ${t.zone} | 票數: ${t.quantity} 張<br/>
+          座位: ${(t.seatNumbers||[]).join(', ')}<br/>
           購買日期: ${new Date(t.purchaseDate).toLocaleDateString()}
           ${t.status === 'refund_pending' ? `<div class="info" style="color:#e67e22;">退票審核中 (${t.refundRequest} 張)</div>` : ''}
         </div>
@@ -1133,10 +1190,12 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         currentZone.sold += quantity;
         concert.ticketsSold = concert.zones.reduce((sum,z)=>sum+z.sold,0);
         let existing = tickets.find(t => t.username === currentUser.username && t.concertId === concert.id && t.zone === currentZone.name);
+        const seats = generateSeatNumbers(concert.id, currentZone.name, quantity);
         if(existing){
           existing.quantity += quantity;
+          existing.seatNumbers = (existing.seatNumbers||[]).concat(seats);
         } else {
-          tickets.push({username: currentUser.username, concertId: concert.id, zone: currentZone.name, quantity, status: 'normal', purchaseDate: new Date().toISOString()});
+          tickets.push({username: currentUser.username, concertId: concert.id, zone: currentZone.name, quantity, seatNumbers: seats, status: 'normal', purchaseDate: new Date().toISOString()});
         }
         saveData();
         renderConcertsForSpectator();
@@ -1184,6 +1243,9 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       if(daysDiff <= 3){
         // Auto refund
         ticket.quantity -= quantity;
+        if(ticket.seatNumbers){
+          ticket.seatNumbers.splice(0, quantity);
+        }
         if(zone){ zone.sold -= quantity; if(zone.sold < 0) zone.sold = 0; }
         concertData.ticketsSold = concertData.zones.reduce((s,z)=>s+z.sold,0);
         if(ticket.quantity === 0){
