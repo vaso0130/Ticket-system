@@ -1,18 +1,22 @@
-// Temporary DB implementation using localStorage
-// In real deployment this should be replaced with actual API calls or DB logic
-export async function fetchFromDB(key) {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : null;
+// DB helpers using backend API
+export async function fetchFromDB() {
+  const res = await fetch('/api/data');
+  if (res.ok) return res.json();
+  return {};
 }
 
-export async function saveToDB(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+export async function saveToDB(data) {
+  await fetch('/api/data', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
 }
 
-// Export current data to a JSON file
+// Export data to JSON file client-side
 export async function exportToJSON(dataObj) {
   const jsonStr = JSON.stringify(dataObj, null, 2);
-  const blob = new Blob([jsonStr], {type: 'application/json'});
+  const blob = new Blob([jsonStr], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -21,11 +25,13 @@ export async function exportToJSON(dataObj) {
   URL.revokeObjectURL(url);
 }
 
-// Import data from a JSON file
+// Import data from JSON file and save to backend
 export async function importFromJSON(file) {
   const text = await file.text();
   try {
-    return JSON.parse(text);
+    const data = JSON.parse(text);
+    await saveToDB(data);
+    return data;
   } catch (e) {
     console.error('Failed to parse JSON', e);
     return {};
