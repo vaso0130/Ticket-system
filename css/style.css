@@ -21,7 +21,8 @@ body {
   min-height: 100vh;
 }
 #app {
-  background: white;
+  background: rgba(255,255,255,0.75);
+  backdrop-filter: blur(10px);
   margin: 20px;
   max-width: var(--max-width);
   width: 100%;
@@ -182,4 +183,13 @@ h2 {
   width: 90%;
   box-sizing: border-box;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
 }
