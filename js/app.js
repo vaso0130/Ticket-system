@@ -17,10 +17,34 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     {id:2, name:'高雄巨蛋', location: '高雄市左營區', capacity: 13000}
   ];
 
-  // Concerts database: id, title, date, venueId, ticketsAvailable, ticketsSold, price
+  // Concerts database with zone info
   let concerts = [
-    {id: 1, title: '流行音樂演唱會', date: '2024-09-15', venueId: 1, ticketsAvailable: 100, ticketsSold: 0, price: 1500},
-    {id: 2, title: '搖滾之夜', date: '2024-10-01', venueId: 2, ticketsAvailable: 200, ticketsSold: 0, price: 1200}
+    {
+      id: 1,
+      title: '流行音樂演唱會',
+      date: '2024-09-15',
+      venueId: 1,
+      ticketsAvailable: 100,
+      ticketsSold: 0,
+      zones: [
+        {name: '搖滾區', price: 2000, capacity: 30, sold: 0},
+        {name: '熱區', price: 1700, capacity: 30, sold: 0},
+        {name: '一般區', price: 1500, capacity: 40, sold: 0}
+      ]
+    },
+    {
+      id: 2,
+      title: '搖滾之夜',
+      date: '2024-10-01',
+      venueId: 2,
+      ticketsAvailable: 200,
+      ticketsSold: 0,
+      zones: [
+        {name: '搖滾區', price: 1600, capacity: 80, sold: 0},
+        {name: '熱區', price: 1400, capacity: 60, sold: 0},
+        {name: '一般區', price: 1200, capacity: 60, sold: 0}
+      ]
+    }
   ];
 
   // Tickets purchased: {username, concertId, quantity}
@@ -38,10 +62,11 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
   const dbFileInput = document.getElementById('dbFileInput');
 
   function showHeaderButtons(show){
-    const display = show ? 'inline-block' : 'none';
-    logoutBtn.style.display = display;
-    importDbBtn.style.display = display;
-    exportDbBtn.style.display = display;
+    const logoutDisplay = show ? 'inline-block' : 'none';
+    logoutBtn.style.display = logoutDisplay;
+    const dbDisplay = show && (currentRole==='admin' || currentRole==='organizer') ? 'inline-block' : 'none';
+    importDbBtn.style.display = dbDisplay;
+    exportDbBtn.style.display = dbDisplay;
   }
 
   function setMainHTML(html){
@@ -279,7 +304,7 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         err.style.display = 'block';
         return;
       }
-      // 新增帳號（角色為觀眾）
+      // 新增帳號（角色為一般使用者）
       const newUser = {username, password, roles: ['spectator']};
       users.push(newUser);
       succ.textContent = '註冊成功，將自動登入...';
@@ -327,7 +352,7 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     switch(role){
       case 'admin': return '管理者';
       case 'organizer': return '主辦方';
-      case 'spectator': return '觀眾';
+      case 'spectator': return '一般使用者';
       default: return role;
     }
   }
@@ -395,7 +420,7 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         <select id="newRoles" multiple required style="height: 120px;">
           <option value="admin">管理者</option>
           <option value="organizer">主辦方</option>
-          <option value="spectator">觀眾</option>
+          <option value="spectator">一般使用者</option>
         </select>
         <p style="font-size:0.85rem; color:#666; margin-top:0.25rem;">(可多選，按 Ctrl/Cmd 多選身分組)</p>
         <button type="submit" style="margin-top:1rem;">新增使用者</button>
@@ -547,10 +572,21 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         <select id="concertVenue" required>
           <option value="" disabled selected>請選擇場地</option>
         </select>
-        <label for="concertTickets">可售票數量</label>
-        <input type="number" id="concertTickets" min="1" required />
-        <label for="concertPrice">票價 (NT$)</label>
-        <input type="number" id="concertPrice" min="0" required />
+        <fieldset style="margin-top:1rem;">
+          <legend>區域及票價</legend>
+          <label for="rockPrice">搖滾區票價</label>
+          <input type="number" id="rockPrice" min="0" required />
+          <label for="rockQty">搖滾區數量</label>
+          <input type="number" id="rockQty" min="0" required />
+          <label for="hotPrice">熱區票價</label>
+          <input type="number" id="hotPrice" min="0" required />
+          <label for="hotQty">熱區數量</label>
+          <input type="number" id="hotQty" min="0" required />
+          <label for="normalPrice">一般區票價</label>
+          <input type="number" id="normalPrice" min="0" required />
+          <label for="normalQty">一般區數量</label>
+          <input type="number" id="normalQty" min="0" required />
+        </fieldset>
         <button type="submit" style="margin-top:1rem;">新增演唱會</button>
         <p id="addConcertMsg" class="success" style="display:none;"></p>
         <p id="addConcertError" class="error" style="display:none;"></p>
@@ -563,14 +599,22 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       const title = document.getElementById('concertTitle').value.trim();
       const date = document.getElementById('concertDate').value;
       const venueId = parseInt(document.getElementById('concertVenue').value);
-      const ticketsAvailable = parseInt(document.getElementById('concertTickets').value);
-      const price = parseInt(document.getElementById('concertPrice').value);
+      const rockPrice = parseInt(document.getElementById('rockPrice').value);
+      const rockQty = parseInt(document.getElementById('rockQty').value);
+      const hotPrice = parseInt(document.getElementById('hotPrice').value);
+      const hotQty = parseInt(document.getElementById('hotQty').value);
+      const normalPrice = parseInt(document.getElementById('normalPrice').value);
+      const normalQty = parseInt(document.getElementById('normalQty').value);
+      const ticketsAvailable = rockQty + hotQty + normalQty;
       const msg = document.getElementById('addConcertMsg');
       const err = document.getElementById('addConcertError');
       msg.style.display = 'none';
       err.style.display = 'none';
 
-      if(!title || !date || !venueId || !ticketsAvailable || isNaN(price)) {
+      if(!title || !date || !venueId ||
+         isNaN(rockPrice) || isNaN(rockQty) ||
+         isNaN(hotPrice) || isNaN(hotQty) ||
+         isNaN(normalPrice) || isNaN(normalQty)) {
         err.textContent = '所有欄位皆為必填且需有效';
         err.style.display = 'block';
         return;
@@ -589,7 +633,12 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       }
 
       const id = concerts.length ? Math.max(...concerts.map(c => c.id)) + 1 : 1;
-      concerts.push({id, title, date, venueId, ticketsAvailable, ticketsSold: 0, price});
+      const zones = [
+        {name: '搖滾區', price: rockPrice, capacity: rockQty, sold: 0},
+        {name: '熱區', price: hotPrice, capacity: hotQty, sold: 0},
+        {name: '一般區', price: normalPrice, capacity: normalQty, sold: 0}
+      ];
+      concerts.push({id, title, date, venueId, ticketsAvailable, ticketsSold: 0, zones});
       saveData();
       msg.textContent = '新增演唱會成功！';
       msg.style.display = 'block';
@@ -614,11 +663,12 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       const venue = venues.find(v => v.id === c.venueId);
       const venueName = venue ? venue.name : '已刪除場地';
       const li = document.createElement('li');
+      const zoneInfo = c.zones.map(z=>`${z.name} NT$${z.price} 剩餘 ${z.capacity - z.sold}`).join('<br/>');
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${c.title}</strong><br/>
           日期: ${c.date} | 場地: ${venueName} <br/>
-          票價: NT$${c.price} | 可售: ${c.ticketsAvailable} | 已賣: ${c.ticketsSold}
+          ${zoneInfo}
         </div>
       `;
       const delBtn = document.createElement('button');
@@ -664,13 +714,14 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     tbody.innerHTML = '';
     let total = 0;
     concerts.forEach(c => {
-      const revenue = c.ticketsSold * c.price;
+      const revenue = c.zones.reduce((sum,z)=>sum + z.sold * z.price,0);
+      const sold = c.zones.reduce((sum,z)=>sum + z.sold,0);
       total += revenue;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${c.title}</td>
-        <td>${c.price}</td>
-        <td>${c.ticketsSold}</td>
+        <td>-</td>
+        <td>${sold}</td>
         <td>${revenue}</td>
       `;
       tbody.appendChild(tr);
@@ -713,10 +764,21 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         <select id="concertVenue" required>
           <option value="" disabled selected>請選擇場地</option>
         </select>
-        <label for="concertTickets">可售票數量</label>
-        <input type="number" id="concertTickets" min="1" required />
-        <label for="concertPrice">票價 (NT$)</label>
-        <input type="number" id="concertPrice" min="0" required />
+        <fieldset style="margin-top:1rem;">
+          <legend>區域及票價</legend>
+          <label for="rockPriceOrg">搖滾區票價</label>
+          <input type="number" id="rockPriceOrg" min="0" required />
+          <label for="rockQtyOrg">搖滾區數量</label>
+          <input type="number" id="rockQtyOrg" min="0" required />
+          <label for="hotPriceOrg">熱區票價</label>
+          <input type="number" id="hotPriceOrg" min="0" required />
+          <label for="hotQtyOrg">熱區數量</label>
+          <input type="number" id="hotQtyOrg" min="0" required />
+          <label for="normalPriceOrg">一般區票價</label>
+          <input type="number" id="normalPriceOrg" min="0" required />
+          <label for="normalQtyOrg">一般區數量</label>
+          <input type="number" id="normalQtyOrg" min="0" required />
+        </fieldset>
         <button type="submit" style="margin-top:1rem;">新增演唱會</button>
         <p id="addConcertMsg" class="success" style="display:none;"></p>
         <p id="addConcertError" class="error" style="display:none;"></p>
@@ -729,14 +791,22 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       const title = document.getElementById('concertTitle').value.trim();
       const date = document.getElementById('concertDate').value;
       const venueId = parseInt(document.getElementById('concertVenue').value);
-      const ticketsAvailable = parseInt(document.getElementById('concertTickets').value);
-      const price = parseInt(document.getElementById('concertPrice').value);
+      const rockPrice = parseInt(document.getElementById('rockPriceOrg').value);
+      const rockQty = parseInt(document.getElementById('rockQtyOrg').value);
+      const hotPrice = parseInt(document.getElementById('hotPriceOrg').value);
+      const hotQty = parseInt(document.getElementById('hotQtyOrg').value);
+      const normalPrice = parseInt(document.getElementById('normalPriceOrg').value);
+      const normalQty = parseInt(document.getElementById('normalQtyOrg').value);
+      const ticketsAvailable = rockQty + hotQty + normalQty;
       const msg = document.getElementById('addConcertMsg');
       const err = document.getElementById('addConcertError');
       msg.style.display = 'none';
       err.style.display = 'none';
 
-      if(!title || !date || !venueId || !ticketsAvailable || isNaN(price)) {
+      if(!title || !date || !venueId ||
+         isNaN(rockPrice) || isNaN(rockQty) ||
+         isNaN(hotPrice) || isNaN(hotQty) ||
+         isNaN(normalPrice) || isNaN(normalQty)) {
         err.textContent = '所有欄位皆為必填且需有效';
         err.style.display = 'block';
         return;
@@ -754,7 +824,12 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       }
 
       const id = concerts.length ? Math.max(...concerts.map(c => c.id))+1 : 1;
-      concerts.push({id, title, date, venueId, ticketsAvailable, ticketsSold: 0, price});
+      const zones = [
+        {name: '搖滾區', price: rockPrice, capacity: rockQty, sold: 0},
+        {name: '熱區', price: hotPrice, capacity: hotQty, sold: 0},
+        {name: '一般區', price: normalPrice, capacity: normalQty, sold: 0}
+      ];
+      concerts.push({id, title, date, venueId, ticketsAvailable, ticketsSold: 0, zones});
       saveData();
       msg.textContent = '新增演唱會成功！';
       msg.style.display = 'block';
@@ -769,11 +844,12 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       const venue = venues.find(v=>v.id===c.venueId);
       const venueName = venue ? venue.name : '已刪除場地';
       const li = document.createElement('li');
+      const zoneInfo = c.zones.map(z=>`${z.name} NT$${z.price} 剩餘 ${z.capacity - z.sold}`).join('<br/>');
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${c.title}</strong><br/>
           日期: ${c.date} | 場地: ${venueName} <br/>
-          票價: NT$${c.price} | 可售: ${c.ticketsAvailable} | 已賣: ${c.ticketsSold}
+          ${zoneInfo}
         </div>
       `;
       ul.appendChild(li);
@@ -803,13 +879,14 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     tbody.innerHTML = '';
     let total = 0;
     concerts.forEach(c=>{
-      const revenue = c.ticketsSold * c.price;
+      const revenue = c.zones.reduce((sum,z)=>sum + z.sold * z.price,0);
+      const sold = c.zones.reduce((sum,z)=>sum + z.sold,0);
       total += revenue;
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${c.title}</td>
-        <td>${c.price}</td>
-        <td>${c.ticketsSold}</td>
+        <td>-</td>
+        <td>${sold}</td>
         <td>${revenue}</td>
       `;
       tbody.appendChild(tr);
@@ -822,7 +899,7 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
 
   function renderSpectatorDashboard(){
     setMainHTML(`
-      <h2>觀眾專區</h2>
+      <h2>一般使用者專區</h2>
       <section>
         <h3>演唱會列表</h3>
         <ul class="concert-list" id="spectatorConcertList"></ul>
@@ -841,18 +918,19 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     const ul = document.getElementById('spectatorConcertList');
     ul.innerHTML = '';
     concerts.forEach(c => {
-      const ticketsLeft = c.ticketsAvailable - c.ticketsSold;
       const venue = venues.find(v => v.id === c.venueId);
       const venueName = venue ? venue.name : '已刪除場地';
       const li = document.createElement('li');
+      const zoneInfo = c.zones.map(z=>`${z.name} NT$${z.price} 剩餘 ${z.capacity - z.sold}`).join(' | ');
+      const totalLeft = c.zones.reduce((sum,z)=>sum+(z.capacity - z.sold),0);
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${c.title}</strong><br/>
           日期: ${c.date} | 場地: ${venueName} <br/>
-          票價: NT$${c.price} | 剩餘票數: ${ticketsLeft}
+          ${zoneInfo}
         </div>
       `;
-      if(ticketsLeft > 0){
+      if(totalLeft > 0){
         const buyBtn = document.createElement('button');
         buyBtn.textContent = '購買';
         buyBtn.onclick = ()=> showBuyTicketModal(c);
@@ -886,7 +964,8 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         <div style="flex-grow:1;">
           <strong>${concert.title}</strong><br/>
           日期: ${concert.date} | 場地: ${venues.find(v=>v.id===concert.venueId)?.name ?? '已刪除場地'} <br/>
-          票數: ${t.quantity} 張
+          區域: ${t.zone} | 票數: ${t.quantity} 張<br/>
+          購買日期: ${new Date(t.purchaseDate).toLocaleDateString()}
           ${t.status === 'refund_pending' ? `<div class="info" style="color:#e67e22;">退票審核中 (${t.refundRequest} 張)</div>` : ''}
         </div>
       `;
@@ -907,10 +986,13 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
   // Modal buy tickets
   function showBuyTicketModal(concert){
     const modal = createModal();
-    const ticketsLeft = concert.ticketsAvailable - concert.ticketsSold;
+    const zoneOptions = concert.zones.map(z=>`<option value="${z.name}">${z.name} NT$${z.price} (剩 ${z.capacity - z.sold})</option>`).join('');
+    let currentZone = concert.zones[0];
+    let ticketsLeft = currentZone.capacity - currentZone.sold;
     modal.box.innerHTML = `
       <h3>購買票券 - ${concert.title}</h3>
-      <p>票價：NT$${concert.price}</p>
+      <label for="buyZone">選擇區域</label>
+      <select id="buyZone" style="width:100%;">${zoneOptions}</select>
       <label for="ticketQuantity">購買數量 (剩餘 ${ticketsLeft} 張)</label>
       <input type="number" id="ticketQuantity" min="1" max="${ticketsLeft}" value="1" style="width:100%; padding:0.5rem; font-size:1rem;" />
       <label for="payMethod" style="margin-top:1rem;">選擇支付方式</label>
@@ -941,8 +1023,7 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         `;
       } else if(method === 'linepay'){
         payFields.innerHTML = `
-          <label for="lineId">Line Pay 帳號</label>
-          <input type="text" id="lineId" placeholder="請輸入Line Pay帳號" />
+          <div class="info">將跳轉至 Line Pay 完成付款</div>
         `;
       } else if(method === 'atm'){
         // 假銀行資訊
@@ -956,6 +1037,15 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
     }
     renderPayFields();
     modal.box.querySelector('#payMethod').onchange = renderPayFields;
+    const zoneSelect = modal.box.querySelector('#buyZone');
+    zoneSelect.onchange = () => {
+      currentZone = concert.zones.find(z=>z.name === zoneSelect.value);
+      ticketsLeft = currentZone.capacity - currentZone.sold;
+      const qtyInput = modal.box.querySelector('#ticketQuantity');
+      qtyInput.max = ticketsLeft;
+      qtyInput.value = ticketsLeft > 0 ? 1 : 0;
+      modal.box.querySelector('label[for="ticketQuantity"]').textContent = `購買數量 (剩餘 ${ticketsLeft} 張)`;
+    };
 
     modal.cancelBtn.onclick = () => {
       removeModal(modal.overlay);
@@ -1000,12 +1090,6 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         // 直接完成購買
         finishPurchase();
       } else if(method === 'linepay'){
-        const lineId = modal.box.querySelector('#lineId').value.trim();
-        if(!lineId){
-          buyError.textContent = '請輸入Line Pay帳號';
-          buyError.style.display = 'block';
-          return;
-        }
         // 模擬跳轉
         modal.box.innerHTML = `
           <h3>Line Pay 支付</h3>
@@ -1041,12 +1125,13 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       }
 
       function finishPurchase(){
-        concert.ticketsSold += quantity;
-        let existing = tickets.find(t => t.username === currentUser.username && t.concertId === concert.id);
+        currentZone.sold += quantity;
+        concert.ticketsSold = concert.zones.reduce((sum,z)=>sum+z.sold,0);
+        let existing = tickets.find(t => t.username === currentUser.username && t.concertId === concert.id && t.zone === currentZone.name);
         if(existing){
           existing.quantity += quantity;
         } else {
-          tickets.push({username: currentUser.username, concertId: concert.id, quantity, status: 'normal'});
+          tickets.push({username: currentUser.username, concertId: concert.id, zone: currentZone.name, quantity, status: 'normal', purchaseDate: new Date().toISOString()});
         }
         saveData();
         renderConcertsForSpectator();
@@ -1087,14 +1172,33 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         refundError.style.display = 'block';
         return;
       }
-      // 標記為待審核
-      ticket.refundRequest = quantity;
-      ticket.status = 'refund_pending';
-      saveData();
-      renderConcertsForSpectator();
-      renderMyTickets();
-      alert(`退票申請已送出，請等待審核`);
-      removeModal(modal.overlay);
+      const purchaseDate = new Date(ticket.purchaseDate);
+      const daysDiff = (Date.now() - purchaseDate.getTime()) / (1000*60*60*24);
+      const concertData = concerts.find(c => c.id === ticket.concertId);
+      const zone = concertData ? concertData.zones.find(z=>z.name===ticket.zone) : null;
+      if(daysDiff <= 3){
+        // Auto refund
+        ticket.quantity -= quantity;
+        if(zone){ zone.sold -= quantity; if(zone.sold < 0) zone.sold = 0; }
+        concertData.ticketsSold = concertData.zones.reduce((s,z)=>s+z.sold,0);
+        if(ticket.quantity === 0){
+          const idx = tickets.findIndex(x=>x===ticket);
+          if(idx !== -1) tickets.splice(idx,1);
+        }
+        saveData();
+        renderConcertsForSpectator();
+        renderMyTickets();
+        alert(`已成功退票 ${quantity} 張`);
+        removeModal(modal.overlay);
+      } else {
+        ticket.refundRequest = quantity;
+        ticket.status = 'refund_pending';
+        saveData();
+        renderConcertsForSpectator();
+        renderMyTickets();
+        alert(`退票申請已送出，請等待審核`);
+        removeModal(modal.overlay);
+      }
     };
   }
 
@@ -1114,6 +1218,7 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
       li.innerHTML = `
         <div style="flex-grow:1;">
           <strong>${concert.title}</strong><br/>
+          區域: ${t.zone}<br/>
           申請人: ${t.username}<br/>
           申請退票數量: ${t.refundRequest} 張
         </div>
@@ -1126,8 +1231,9 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
         t.quantity -= t.refundRequest;
         const concertData = concerts.find(c => c.id === t.concertId);
         if(concertData){
-          concertData.ticketsSold -= t.refundRequest;
-          if(concertData.ticketsSold < 0) concertData.ticketsSold = 0;
+          const zone = concertData.zones.find(z=>z.name===t.zone);
+          if(zone){ zone.sold -= t.refundRequest; if(zone.sold < 0) zone.sold = 0; }
+          concertData.ticketsSold = concertData.zones.reduce((s,z)=>s+z.sold,0);
         }
         if(t.quantity === 0){
           const idx = tickets.findIndex(x=>x===t);
