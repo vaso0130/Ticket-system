@@ -145,7 +145,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <button type="button" id="forgotPwdBtn" style="margin-top:1rem; margin-left:0.5rem; background:#00bcd4;">忘記密碼</button>
         <p id="loginError" class="error" style="display:none;"></p>
       </form>
-    `;
+    `);
 
     document.getElementById('loginForm').addEventListener('submit', (e) => {
       e.preventDefault();
@@ -201,7 +201,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <p id="fpError" class="error" style="display:none;"></p>
         <p id="fpSuccess" class="success" style="display:none;"></p>
       </form>
-    `;
+    `);
 
     let sentCode = null;
 
@@ -283,7 +283,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <p id="registerError" class="error" style="display:none;"></p>
         <p id="registerSuccess" class="success" style="display:none;"></p>
       </form>
-    `;
+    `);
     document.getElementById('registerForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const username = document.getElementById('regUsername').value.trim();
@@ -398,7 +398,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
     </nav>
     <section id="adminContent">
     </section>
-    `;
+    `);
     document.getElementById('adminUsersBtn').onclick = () => renderAdminUsers();
     document.getElementById('adminVenuesBtn').onclick = () => renderAdminVenues();
     document.getElementById('adminTicketsBtn').onclick = () => renderAdminTickets();
@@ -745,7 +745,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       <button id="orgAccountingBtn">帳務管理</button>
     </nav>
     <section id="organizerContent"></section>
-    `;
+    `);
     document.getElementById('orgTicketsBtn').onclick = () => renderOrgTickets();
     document.getElementById('orgAccountingBtn').onclick = () => renderOrgAccounting();
 
@@ -913,7 +913,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
         <h3>我的票券</h3>
         <ul class="tickets-list" id="myTicketsList"></ul>
       </section>
-    `;
+    `);
     renderConcertsForSpectator();
     renderMyTickets();
   }
