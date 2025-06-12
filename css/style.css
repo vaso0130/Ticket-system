@@ -11,8 +11,8 @@
   box-sizing: border-box;
 }
 body {
-  font-family: "Noto Sans TC", Arial, sans-serif;
-  background: var(--background-color);
+  font-family: 'Poppins', "Noto Sans TC", Arial, sans-serif;
+  background: linear-gradient(135deg, var(--background-color) 0%, #e0f7fa 100%);
   margin: 0;
   padding: 0;
   color: var(--text-color);
@@ -32,7 +32,7 @@ body {
   min-height: 600px;
 }
 header {
-  background: var(--secondary-color);
+  background: linear-gradient(90deg, var(--secondary-color), var(--primary-color));
   color: white;
   padding: 1rem;
   border-top-left-radius: var(--border-radius);
@@ -40,11 +40,13 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 header h1 {
   margin: 0;
   font-weight: 600;
-  font-size: 1.5rem;
+  font-size: 1.7rem;
+  font-family: 'Lobster', cursive;
 }
 main {
   flex: 1;
@@ -113,6 +115,11 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.user-list li:hover, .concert-list li:hover, .tickets-list li:hover, .venue-list li:hover, .role-list li:hover {
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
 }
 .flex-row {
   display: flex;
@@ -127,9 +134,12 @@ h2 {
   background: #e91e63;
   padding: 0.3rem 0.6rem;
   font-size: 0.9rem;
+  border-radius: var(--border-radius);
+  transition: background-color 0.3s ease, transform 0.2s;
 }
 .small-btn:hover {
   background: #ad1457;
+  transform: translateY(-1px);
 }
 .info {
   font-size: 0.9rem;
@@ -171,4 +181,5 @@ h2 {
   max-width: 400px;
   width: 90%;
   box-sizing: border-box;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
