@@ -75,7 +75,12 @@ import { fetchFromDB, saveToDB, exportToXLSX, importFromXLSX } from './db.js';
   }
 
   function animateContent(){
-    anime({ targets: '#mainContent', opacity: [0,1], duration: 600, easing: 'easeOutQuad' });
+    if (window.anime) {
+      anime({ targets: '#mainContent', opacity: [0,1], duration: 600, easing: 'easeOutQuad' });
+    } else {
+      const el = document.querySelector('#mainContent');
+      if(el) el.style.opacity = 1;
+    }
   }
 
   // Persistent storage keys
