@@ -1,7 +1,11 @@
 // DB helpers using backend API
 export async function fetchFromDB() {
-  const res = await fetch('/api/data');
-  if (res.ok) return res.json();
+  try {
+    const res = await fetch('/api/data');
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.error('Failed to fetch data from backend', err);
+  }
   return {};
 }
 

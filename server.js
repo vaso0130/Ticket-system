@@ -1,15 +1,19 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { Low, JSONFile } = require('lowdb');
+// lowdb v7 exports adapters under the 'lowdb/node' entry point when using
+// commonjs. Importing from 'lowdb' directly would return undefined constructors
+// which caused the server to crash on startup.
+const { Low } = require('lowdb');
+const { JSONFile } = require('lowdb/node');
 const multer = require('multer');
 const path = require('path');
 
 (async () => {
   const dbFile = path.join(__dirname, 'data.json');
   const adapter = new JSONFile(dbFile);
-  const db = new Low(adapter);
+  const defaults = { venues: [], concerts: [], tickets: [] };
+  const db = new Low(adapter, defaults);
   await db.read();
-  db.data = db.data || { venues: [], concerts: [], tickets: [] };
   await db.write();
 
   const app = express();
