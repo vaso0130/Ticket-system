@@ -500,7 +500,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
       </form>
     `;
     renderVenueList();
-    document.getElementById('addVenueForm').addEventListener('submit', (e) => {
+    document.getElementById('addVenueForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('venueName').value.trim();
       const location = document.getElementById('venueLocation').value.trim();
@@ -607,14 +607,13 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
     `;
     renderConcertVenueOptions();
     renderConcertListAdmin();
-    document.getElementById('addConcertForm').addEventListener('submit', e=>{
+    document.getElementById('addConcertForm').addEventListener('submit', async e=>{
       e.preventDefault();
       const title = document.getElementById('concertTitle').value.trim();
       const dates = document.getElementById('concertDates').value.split(',').map(d=>d.trim()).filter(d=>d);
       const saleStart = document.getElementById('saleStart').value;
       const saleEnd = document.getElementById('saleEnd').value;
       const venueId = parseInt(document.getElementById('concertVenue').value);
-      const imageFile = document.getElementById('concertImage').files[0];
       const imageFile = document.getElementById('concertImage').files[0];
       const rockPrice = parseInt(document.getElementById('rockPrice').value);
       const rockQty = parseInt(document.getElementById('rockQty').value);
@@ -819,7 +818,7 @@ import { fetchFromDB, saveToDB, exportToJSON, importFromJSON } from './db.js';
     `;
     renderConcertVenueOptions();
     renderConcertListOrganizer();
-    document.getElementById('addConcertForm').addEventListener('submit', e=>{
+    document.getElementById('addConcertForm').addEventListener('submit', async e=>{
       e.preventDefault();
       const title = document.getElementById('concertTitle').value.trim();
       const dates = document.getElementById('concertDates').value.split(',').map(d=>d.trim()).filter(d=>d);
