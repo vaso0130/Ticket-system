@@ -1,0 +1,372 @@
+:root {
+  --primary-color: #6A1B9A; /* 深紫羅蘭色 */
+  --secondary-color: #FF6F00; /* 鮮橙色 */
+  --accent-color: #1DE9B6; /* 青綠色 */
+  --background-color: #ECEFF1; /* 淺灰藍色 */
+  --text-color: #263238; /* 深灰藍色 */
+  --border-radius: 10px; /* 稍微增加圓角 */
+  --max-width: 960px; /* 稍微增加最大寬度 */
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  font-family: "Noto Sans TC", Arial, sans-serif;
+  background: var(--background-color);
+  margin: 0;
+  padding: 0;
+  color: var(--text-color);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+}
+#app {
+  background: white;
+  margin: 20px;
+  max-width: var(--max-width);
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: var(--border-radius);
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+}
+header {
+  background: var(--secondary-color);
+  color: white;
+  padding: 1rem;
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+header h1 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+main {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+}
+button {
+  background: var(--primary-color);
+  border: none;
+  color: white;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+button:hover {
+  background: var(--accent-color);
+}
+input, select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: var(--border-radius);
+  width: 100%;
+  margin-top: 0.25rem;
+}
+label {
+  display: block;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+form {
+  max-width: 400px;
+  margin: 2rem auto;
+}
+.logout-btn {
+  background: transparent;
+  border: 1px solid white;
+  padding: 0.4rem 1rem;
+  border-radius: var(--border-radius);
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+.logout-btn:hover {
+  background: white;
+  color: var(--secondary-color);
+}
+h2 {
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.3rem;
+  margin-top: 0;
+}
+.user-list, .concert-list, .tickets-list, .venue-list, .role-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 0.5rem;
+}
+.user-list li, .concert-list li, .tickets-list li, .venue-list li, .role-list li {
+  background: #fafafa;
+  border: 1px solid #ddd;
+  margin-bottom: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: var(--border-radius);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.flex-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+.flex-grow {
+  flex-grow: 1;
+}
+.small-btn {
+  background: #e91e63;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+}
+.small-btn:hover {
+  background: #ad1457;
+}
+.info {
+  font-size: 0.9rem;
+  color: #555;
+}
+.error {
+  color: #e53935;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+.success {
+  color: #43a047;
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+@media (max-width: 600px) {
+  main {
+    padding: 1rem;
+  }
+  form {
+    max-width: 100%;
+    margin: 1rem 0;
+  }
+}
+
+/* Animations for Modals */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes fadeInScaleUp {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeOutScaleDown {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.9); }
+}
+
+.modal-overlay.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.modal-overlay.fade-out {
+  animation: fadeOut 0.3s ease-out forwards;
+}
+
+.modal-box.fade-in-scale-up {
+  animation: fadeInScaleUp 0.3s ease-out forwards;
+}
+
+.modal-box.fade-out-scale-down {
+  animation: fadeOutScaleDown 0.3s ease-out forwards;
+}
+
+/* User Table Styles */
+.table-responsive {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.user-table th, .user-table td {
+  border: 1px solid #ddd;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.user-table th {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: 600;
+}
+
+.user-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.user-table tbody tr:hover {
+  background-color: #f1f1f1;
+}
+
+.user-row {
+  cursor: default; /* Changed from pointer as actions are now button-based */
+}
+
+.actions-cell button {
+  margin-right: 5px;
+}
+
+.actions-cell button:last-child {
+  margin-right: 0;
+}
+
+/* Specific button styles within table if needed */
+.view-btn {
+  background-color: var(--accent-color);
+  color: var(--text-color);
+}
+.view-btn:hover {
+  background-color: #18c9a6;
+}
+
+.edit-btn {
+  background-color: var(--secondary-color);
+}
+.edit-btn:hover {
+  background-color: #e65100;
+}
+
+.delete-btn {
+  background-color: #e53935; /* Red for delete */
+}
+.delete-btn:hover {
+  background-color: #c62828;
+}
+
+#addUserForm {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #f9f9f9;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#addUserForm h4 {
+  margin-top: 0;
+  color: var(--primary-color);
+}
+
+#editRolesAdmin label {
+  font-weight: normal;
+  margin-top: 0.25rem;
+}
+
+#editRolesAdmin input[type="checkbox"] {
+  width: auto;
+  margin-right: 0.5rem;
+}
+
+
+/* Ensure modal styles are applied correctly */
+.modal-overlay {
+  position: fixed;
+  left: 0; top: 0;
+  width: 100vw; height: 100vh;
+  background-color: rgba(0,0,0,0.7); /* 加深背景遮罩 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  -webkit-backdrop-filter: blur(10px); /* 增強毛玻璃效果 */
+  backdrop-filter: blur(10px); /* 增強毛玻璃效果 */
+}
+.modal-box {
+  background: rgba(255, 255, 255, 0.9); /* 調整背景使其更適合毛玻璃效果 */
+  padding: 2rem;
+  border-radius: 12px;
+  max-width: 400px;
+  width: 90%;
+  box-sizing: border-box;
+  max-height: 90vh; /* 新增：限制最大高度 */
+  overflow-y: auto; /* 新增：內容過多時可滾動 */
+}
+
+/* 新增：Modal 內容的 RWD 調整 */
+.modal-box h5 {
+    font-size: 1.1rem; /* 調整標題大小 */
+}
+
+.modal-box label {
+    font-size: 0.9rem; /* 調整標籤字體大小 */
+    margin-top: 0.75rem;
+}
+
+.modal-box input[type="datetime-local"],
+.modal-box input[type="url"],
+.modal-box input[type="number"] {
+    padding: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.modal-box fieldset {
+    padding: 0.75rem;
+}
+
+.modal-box fieldset legend {
+    font-size: 1rem;
+}
+
+.modal-box .modal-buttons button {
+    padding: 0.5rem 1rem; /* 調整按鈕大小 */
+    font-size: 0.9rem;
+}
+
+/* 針對非常小的螢幕，進一步調整 */
+@media (max-width: 480px) {
+    .modal-box {
+        padding: 1.5rem;
+        width: 95%;
+    }
+
+    .modal-box h5 {
+        font-size: 1rem;
+    }
+
+    .modal-box label {
+        font-size: 0.85rem;
+    }
+
+    .modal-box input[type="datetime-local"],
+    .modal-box input[type="url"],
+    .modal-box input[type="number"] {
+        padding: 0.35rem;
+        font-size: 0.85rem;
+    }
+    .modal-box .modal-buttons {
+        display: flex;
+        flex-direction: column; /* 按鈕垂直排列 */
+        gap: 0.5rem; /* 按鈕間距 */
+    }
+
+    .modal-box .modal-buttons button {
+        width: 100%; /* 按鈕滿寬 */
+    }
+}
