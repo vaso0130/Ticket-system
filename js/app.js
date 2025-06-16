@@ -84,6 +84,50 @@ function clearLoginState() {
 
 // function roleNameDisplay(role){ ... moved to ui.js ... }
 
+// Render public home page with concert carousel
+function renderHomePage() {
+  logoutBtn.style.display = 'none';
+  switchRoleBtn.style.display = 'none';
+  accountSettingsBtn.style.display = 'none';
+
+  const carouselSlides = concerts.map(c => {
+    const venue = venues.find(v => v.id === c.venueId);
+    const firstSession = c.sessions && c.sessions[0];
+    const dateStr = firstSession ? new Date(firstSession.dateTime).toLocaleDateString() : '';
+    const location = venue ? venue.name : '';
+    return `
+      <div class="carousel-slide">
+        <img src="${c.imageUrl}" alt="${c.title}">
+        <div class="slide-info">
+          <h3>${c.title}</h3>
+          <p>${dateStr} ${location}</p>
+        </div>
+      </div>`;
+  }).join('');
+
+  mainContent.innerHTML = `
+    <div class="home-carousel full-bg-carousel">
+      <div class="carousel-slides" id="carouselSlides">
+        ${carouselSlides}
+      </div>
+      <button id="homeLoginBtn" class="home-login-btn overlay-login-btn">立即登入</button>
+    </div>
+  `;
+
+  const slides = Array.from(document.querySelectorAll('.carousel-slide'));
+  let slideIndex = 0;
+  if (slides.length) {
+    slides[0].classList.add('active');
+    setInterval(() => {
+      slides[slideIndex].classList.remove('active');
+      slideIndex = (slideIndex + 1) % slides.length;
+      slides[slideIndex].classList.add('active');
+    }, 4000);
+  }
+
+  document.getElementById('homeLoginBtn').onclick = () => authRenderLogin();
+}
+
 // Render dashboard based on role
 function renderDashboard() {
   if(!currentUser || !currentRole){
@@ -257,6 +301,10 @@ function renderDashboard() {
       // Corrected call to initPaymentModule:
       initPaymentModule(appData, saveData, getCurrentUser);
 
-      renderDashboard(); // Initial render
-      updateLoginRelatedUI(); // Update UI elements based on initial login state
+      if (currentUser && currentRole) {
+        renderDashboard();
+        updateLoginRelatedUI();
+      } else {
+        renderHomePage();
+      }
     }
