@@ -56,14 +56,32 @@ function processRefundRequest(ticket, modal) { // ticket is a single ticket obje
     setTimeout(() => {
         const ticketToUpdate = appDataRef.tickets.find(t => t.id === ticket.id);
         if (ticketToUpdate) {
-            ticketToUpdate.status = 'refund_pending';
-            ticketToUpdate.refundRequestTime = Date.now(); // Add a timestamp for the request
-
-            saveDataCallbackRef();
-            alert(`票券 (ID: ${ticket.id}) 已提交退票申請。`);
+            const purchaseTime = new Date(ticketToUpdate.purchaseTime).getTime();
+            const now = Date.now();
+            if (now - purchaseTime <= 3 * 60 * 1000) {
+                ticketToUpdate.status = 'refunded';
+                ticketToUpdate.refundTime = now;
+                const concertData = appDataRef.concerts.find(c => c.id === (ticketToUpdate.concertId || ticketToUpdate.eventId));
+                if (concertData) {
+                    const sessionData = concertData.sessions.find(s => s.id === ticketToUpdate.sessionId || s.sessionId === ticketToUpdate.sessionId);
+                    if (sessionData) {
+                        const sectionData = sessionData.sections.find(sec => sec.sectionId === ticketToUpdate.sectionId);
+                        if (sectionData) {
+                            sectionData.ticketsSold = Math.max(0, sectionData.ticketsSold - 1);
+                        }
+                    }
+                }
+                saveDataCallbackRef();
+                alert(`票券 (ID: ${ticket.id}) 已自動退票。`);
+            } else {
+                ticketToUpdate.status = 'refund_pending';
+                ticketToUpdate.refundRequestTime = now;
+                saveDataCallbackRef();
+                alert(`票券 (ID: ${ticket.id}) 已提交退票申請。`);
+            }
             removeModal(modal.overlay);
             if (onRefundUpdateCallbackRef) {
-                onRefundUpdateCallbackRef(); // Refresh UI
+                onRefundUpdateCallbackRef();
             }
         } else {
             console.error("Ticket not found for refund processing:", ticket.id);
