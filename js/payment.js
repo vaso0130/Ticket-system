@@ -120,55 +120,68 @@ export function processAtmPayment(modal, paymentDetails, onPurchaseSuccessCallba
 
 // Modified completePurchase to accept paymentDetails object
 function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSuccessCallbackRef) {
-    const { tickets } = appDataRef; // tickets from appDataRef.tickets
+    const { tickets } = appDataRef;
     const currentUser = getCurrentUserCallbackRef();
-    const { event, session, selectedSection, quantity } = paymentDetails; // quantity is the number of tickets to buy
+    // Destructure all needed properties from paymentDetails, including the new seatingType
+    const { event, session, selectedSection, quantity, seats: assignedSeats, seatingType } = paymentDetails;
 
-    // Find the specific section in the concert's session to update ticketsSold
     const concertToUpdate = appDataRef.concerts.find(c => c.id === event.id);
     if (!concertToUpdate) {
         console.error("Concert not found for updating ticket sales.");
-        alert("發生錯誤，無法完成購買。請稍後再試。");
+        alert("發生錯誤，無法完成購買。請稍後再試。(C01)");
         removeModal(modal.overlay);
         return;
     }
     const sessionToUpdate = concertToUpdate.sessions.find(s => s.id === session.id);
     if (!sessionToUpdate) {
         console.error("Session not found for updating ticket sales.");
-        alert("發生錯誤，無法完成購買。請稍後再試。");
+        alert("發生錯誤，無法完成購買。請稍後再試。(S01)");
         removeModal(modal.overlay);
         return;
     }
     const sectionToUpdate = sessionToUpdate.sections.find(sec => sec.sectionId === selectedSection.sectionId);
     if (!sectionToUpdate) {
         console.error("Section not found for updating ticket sales.");
-        alert("發生錯誤，無法完成購買。請稍後再試。");
+        alert("發生錯誤，無法完成購買。請稍後再試。(SEC01)");
         removeModal(modal.overlay);
         return;
     }
 
     sectionToUpdate.ticketsSold += quantity;
 
-    // Create individual ticket records for the user
+    const newlyCreatedTickets = [];
     for (let i = 0; i < quantity; i++) {
-        tickets.push({
-            id: `T${Date.now()}-${currentUser.username.slice(0,3)}-${i}`, // Unique ticket ID
+        let seatInfoForThisTicket;
+        // assignedSeats is an array of seat objects, one for each of the 'quantity' tickets.
+        // For assigned/numbered, seats[i] will be like { row: R, seat: S, label: 'R排S號' }
+        // For general, seats[i] will be like { type: 'generalAdmission', description: '自由座' }
+        if (assignedSeats && assignedSeats[i]) {
+            seatInfoForThisTicket = assignedSeats[i];
+        } else {
+            // Fallback if assignedSeats is not as expected, though ticketing.js should ensure it is.
+            console.warn("Seat information missing for a ticket, falling back to general admission type.")
+            seatInfoForThisTicket = { type: 'generalAdmission', description: '自由座 (資訊缺失)' };
+        }
+
+        const ticketData = {
+            id: `T${Date.now()}-${currentUser.username.slice(0,3)}-${i}-${Math.random().toString(36).substring(2,7)}`, // Enhanced uniqueness
             username: currentUser.username,
             concertId: event.id,
             sessionId: session.id,
             sectionId: selectedSection.sectionId,
-            quantity: 1, // Each ticket record represents 1 ticket
-            status: 'normal', // 'normal', 'refund_pending', 'refunded'
-            purchaseTime: Date.now(),
+            status: 'confirmed',
+            purchaseTime: new Date().toISOString(),
             paymentMethod: paymentMethodDesc,
-            // seatNumber: null, // Placeholder for future seat selection feature
-        });
+            seats: [seatInfoForThisTicket] // Ensure 'seats' is an array containing the seat object, as per data.js structure
+        };
+        tickets.push(ticketData);
+        newlyCreatedTickets.push(ticketData);
     }
 
     saveDataCallbackRef();
 
     if (onPurchaseSuccessCallbackRef) {
-        onPurchaseSuccessCallbackRef();
+        onPurchaseSuccessCallbackRef(newlyCreatedTickets); // Pass the array of newly created tickets
     }
     
     alert(`成功使用 ${paymentMethodDesc} 購買 ${event.title} - ${new Date(session.dateTime).toLocaleDateString()} (${selectedSection.name || selectedSection.sectionId}) ${quantity} 張票券！`);

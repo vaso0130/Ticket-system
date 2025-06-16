@@ -92,11 +92,12 @@ export function renderAdminEventManagementUI(parentElement, targetContainerId = 
 
 // --- Organizer-specific event management UI ---
 // Note: renderOrganizerEventManagementUI would need similar changes to accept parentElement
-export function renderOrganizerEventManagementUI(parentElement, targetContainerId = 'organizerContent') {
-    const container = parentElement.querySelector(`#${targetContainerId}`);
+export function renderOrganizerEventManagementUI(containerElement) { // Changed parameter name and removed targetContainerId
+    const container = containerElement; // Use the passed DOM element directly
+
      if (!container) {
-        console.error("Target container for event management not found:", targetContainerId);
-        parentElement.innerHTML = "<p>主辦方票務模組內容區域錯誤</p>";
+        console.error("Container element for organizer event management not provided or is invalid. UI cannot be rendered.");
+        // If containerElement was indeed the intended parent and it's null, we can't set its innerHTML.
         return;
     }
     container.innerHTML = `
@@ -115,6 +116,12 @@ export function renderOrganizerEventManagementUI(parentElement, targetContainerI
         <p id="addEventErrorOrg" class="error" style="display:none;"></p>
       </form>
     `;
+    // Ensure em_uiHelpers and em_appData are initialized and available
+    if (!em_uiHelpers || !em_appData || !em_appData.venues) {
+        console.error("Event management module not properly initialized or data missing for organizer UI.");
+        container.innerHTML = "<p>模組初始化錯誤，無法載入主辦方票務管理。</p>";
+        return;
+    }
     em_uiHelpers.populateVenueOptions(container.querySelector('#eventVenueOrg'), em_appData.venues);
     renderEventListInternal(container, 'eventListOrg', false); 
 
@@ -164,7 +171,7 @@ export function renderOrganizerEventManagementUI(parentElement, targetContainerI
 // --- Shared Internal Functions ---
 // showAddSessionFormAsModal: Added 'parentListContainer' for list refresh context
 function showAddSessionFormAsModal(event, rolePrefix, parentListContainer) {
-    const modalTitle = `新增場次到 "${event.title}"`;
+    const modalTitle = `新增場次到 \\"${event.title}\\"`;
     const venue = em_appData.venues.find(v => v.id === event.venueId);
     if (!venue || !venue.seatMap) {
         console.error('Venue or seat map not found for event:', event);
@@ -191,17 +198,13 @@ function showAddSessionFormAsModal(event, rolePrefix, parentListContainer) {
     });
 
     const formHtml = `
-        <input type="hidden" id="modalSelectedEventId" value="${event.id}">
-        <input type="hidden" id="modalSelectedEventVenueId" value="${event.venueId}">
+        <input type=\"hidden\" id=\"modalSelectedEventId\" value=\"${event.id}\">
+        <input type=\"hidden\" id=\"modalSelectedEventVenueId\" value=\"${event.venueId}\">
         <div>
-            <label for="modalSessionDateTime">場次日期與時間</label>
-            <input type="datetime-local" id="modalSessionDateTime" required />
+            <label for=\"modalSessionDateTime\">場次日期與時間</label>
+            <input type=\"datetime-local\" id=\"modalSessionDateTime\" required />
         </div>
-        <div>
-            <label for="modalSessionImageUrl">場次圖片 URL (可選)</label>
-            <input type="url" id="modalSessionImageUrl" placeholder="https://example.com/session_image.jpg" />
-        </div>
-        <h5 style="margin-top:1rem; margin-bottom:0.5rem;">各區域票價與票數設定:</h5>
+        <h5 style=\"margin-top:1rem; margin-bottom:0.5rem;\">各區域票價與票數設定:</h5>
         ${sectionsHtml}
         <div>
             <label for="modalSessionSalesStart">售票開始時間</label>
@@ -234,7 +237,6 @@ function showAddSessionFormAsModal(event, rolePrefix, parentListContainer) {
     em_uiHelpers.createModal(modalTitle, formHtml, modalButtons);
     // Clear previous values if any
     document.getElementById('modalSessionDateTime').value = '';
-    document.getElementById('modalSessionImageUrl').value = '';
     document.querySelectorAll('.session-section-price').forEach(input => input.value = '');
     document.querySelectorAll('.session-section-tickets').forEach(input => input.value = '');
     document.getElementById('modalSessionSalesStart').value = '';
@@ -248,7 +250,6 @@ function handleSaveSessionFromModal(rolePrefix, parentListContainer) {
     const eventId = parseInt(document.getElementById('modalSelectedEventId').value);
     const venueId = parseInt(document.getElementById('modalSelectedEventVenueId').value);
     const dateTime = document.getElementById('modalSessionDateTime').value;
-    const sessionImageUrl = document.getElementById('modalSessionImageUrl').value.trim();
     const salesStartDateTime = document.getElementById('modalSessionSalesStart').value;
     const salesEndDateTime = document.getElementById('modalSessionSalesEnd').value;
 
@@ -342,9 +343,8 @@ function handleSaveSessionFromModal(rolePrefix, parentListContainer) {
 
     const sessionId = `${eventId}-${event.sessions.length + 1}`;
     event.sessions.push({
-        sessionId,
+        sessionId, // Corrected: Use the generated sessionId
         dateTime,
-        sessionImageUrl: sessionImageUrl || null,
         salesStartDateTime,
         salesEndDateTime,
         sections: sectionsData
@@ -390,19 +390,12 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
         
         let eventImageHtml = '';
         if (event.imageUrl) {
-            eventImageHtml = `<img src="${event.imageUrl}" alt="${event.title}" style="max-width: 200px; max-height: 150px; object-fit: cover; margin-bottom: 10px;">`;
+            eventImageHtml = `<img src=\"${event.imageUrl}\" alt=\"${event.title}\" style=\"max-width: 200px; max-height: 150px; object-fit: cover; margin-bottom: 10px; border-radius: 4px;\">`;
         }
 
-        let sessionsHtml = '<ul class="sessions-list">';
+        let sessionsHtml = '<ul class=\"sessions-list\">';
         if (event.sessions && event.sessions.length > 0) {
             event.sessions.forEach(session => {
-                let sessionImageHtml = '';
-                if (session.sessionImageUrl) {
-                    sessionImageHtml = `<img src=\"${session.sessionImageUrl}\" alt=\"場次圖片\" style=\"max-width: 150px; max-height: 100px; object-fit: cover; margin-right: 10px; vertical-align: middle;\">`;
-                } else if (event.imageUrl) { 
-                     sessionImageHtml = `<img src=\"${event.imageUrl}\" alt=\"活動圖片\" style=\"max-width: 150px; max-height: 100px; object-fit: cover; margin-right: 10px; vertical-align: middle;\">`;
-                }
-
                 let sectionsDetailHtml = '<ul style=\"padding-left: 20px; font-size: 0.9em;\">';
                 if (session.sections && session.sections.length > 0) {
                     session.sections.forEach(sect => {
@@ -432,7 +425,6 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
 
                 sessionsHtml += `
                     <li style=\"margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;\">
-                        ${sessionImageHtml}
                         <div>
                             <strong>場次:</strong> ${new Date(session.dateTime).toLocaleString()} <br>
                             <strong>售票期間:</strong> ${new Date(session.salesStartDateTime).toLocaleDateString()} - ${new Date(session.salesEndDateTime).toLocaleDateString()} <br>
@@ -451,13 +443,30 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
         eventDiv.innerHTML = `
             <h4>${event.title} (ID: ${event.id})</h4>
             ${eventImageHtml}
-            <p>場地: ${venue ? venue.name : '未知'} | 主辦方: ${event.organizerId || 'N/A'}</p>
+            <p><strong>描述:</strong> ${event.description || '無描述'}</p>
+            <p><strong>分類:</strong> ${event.category || '未分類'}</p>
+            <p><strong>場地:</strong> ${venue ? venue.name : '未知'} | <strong>主辦方:</strong> ${event.organizerId || 'N/A'}</p>
             ${sessionsHtml}
-            <button class="add-session-to-event-btn" data-event-id="${event.id}">為此活動新增場次</button>
-            ${isAdminView ? `<button class="delete-event-btn" data-event-id="${event.id}">刪除整個活動</button>` : ''}
+            <button class=\"edit-event-btn\" data-event-id=\"${event.id}\" style=\"margin-right: 5px; background-color: var(--info-color);\">編輯活動資訊</button>
+            <button class=\"add-session-to-event-btn\" data-event-id=\"${event.id}\" style=\"margin-right: 5px;\">為此活動新增場次</button>
+            ${isAdminView ? `<button class=\"delete-event-btn\" data-event-id=\"${event.id}\">刪除整個活動</button>` : ''}
             <hr>
         `;
         listElement.appendChild(eventDiv);
+    });
+
+    // Event listener for new "Edit Event" buttons
+    listElement.querySelectorAll('.edit-event-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const eventId = parseInt(e.target.dataset.eventId);
+            const eventToEdit = em_appData.concerts.find(c => c.id === eventId);
+            if (eventToEdit) {
+                showEditEventFormAsModal(eventToEdit, isAdminView ? 'Admin' : 'Org', searchScopeElement);
+            } else {
+                console.error('Event to edit not found:', eventId);
+                em_uiHelpers.createModal('錯誤', '<p>找不到要編輯的活動資料。</p>', [{ text: '關閉', onClick: () => em_uiHelpers.removeModal() }]);
+            }
+        });
     });
 
     listElement.querySelectorAll('.add-session-to-event-btn').forEach(button => {
@@ -558,10 +567,200 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
 }
 
 
-// showEditSessionFormAsModal: Added 'parentListContainer' for list refresh context
-// This function also needs to be updated to pass parentListContainer to handleUpdateSessionFromModal
+// showEditEventFormAsModal: Function to show modal for editing an existing event's main details
+function showEditEventFormAsModal(event, rolePrefix, parentListContainer) {
+    const modalTitle = `編輯活動資訊: ${event.title}`;
+    const isAdmin = rolePrefix === 'Admin';
+
+    const formHtml = `
+        <input type=\"hidden\" id=\"modalEditEventId\" value=\"${event.id}\">
+        <div>
+            <label for=\"modalEditEventTitle\">活動標題</label>
+            <input type=\"text\" id=\"modalEditEventTitle\" value=\"${event.title}\" required />
+        </div>
+        <div>
+            <label for=\"modalEditEventDescription\">活動描述</label>
+            <textarea id=\"modalEditEventDescription\" rows=\"3\" style=\"width:98%;\">${event.description || ''}</textarea>
+        </div>
+        <div>
+            <label for=\"modalEditEventImageUrl\">活動圖片 URL</label>
+            <input type=\"url\" id=\"modalEditEventImageUrl\" value=\"${event.imageUrl || ''}\" placeholder=\"https://example.com/image.jpg\" />
+        </div>
+        <div>
+            <label for=\"modalEditEventCategory\">活動分類</label>
+            <input type=\"text\" id=\"modalEditEventCategory\" value=\"${event.category || ''}\" placeholder=\"例如：流行、搖滾、古典\" />
+        </div>
+        <div>
+            <label for=\"modalEditEventVenue\">場地</label>
+            <select id=\"modalEditEventVenue\" required></select>
+        </div>
+        <div>
+            <label for=\"modalEditEventOrganizer\">主辦方</label>
+            <input type=\"text\" id=\"modalEditEventOrganizer\" value=\"${event.organizerId || ''}\" ${isAdmin ? '' : 'readonly'} />
+        </div>
+        <p id=\"modalEditEventMsg\" class=\"success\" style=\"display:none; margin-top: 10px;\"></p>
+        <p id=\"modalEditEventError\" class=\"error\" style=\"display:none; margin-top: 10px;\"></p>
+    `;
+
+    const modalButtons = [
+        {
+            text: '儲存變更',
+            className: 'btn-primary',
+            onClick: () => handleSaveEventChangesFromModal(rolePrefix, parentListContainer)
+        },
+        {
+            text: '取消',
+            className: 'btn-secondary',
+            onClick: () => em_uiHelpers.removeModal()
+        }
+    ];
+
+    em_uiHelpers.createModal(modalTitle, formHtml, modalButtons);
+    em_uiHelpers.populateVenueOptions(document.getElementById('modalEditEventVenue'), em_appData.venues, event.venueId);
+}
+
+// Function to handle saving changes to an event's main details from the modal
+function handleSaveEventChangesFromModal(rolePrefix, parentListContainer) {
+    const eventId = parseInt(document.getElementById('modalEditEventId').value);
+    const title = document.getElementById('modalEditEventTitle').value.trim();
+    const description = document.getElementById('modalEditEventDescription').value.trim();
+    const imageUrl = document.getElementById('modalEditEventImageUrl').value.trim();
+    const category = document.getElementById('modalEditEventCategory').value.trim();
+    const venueId = parseInt(document.getElementById('modalEditEventVenue').value);
+    const organizerId = document.getElementById('modalEditEventOrganizer').value.trim(); // Potentially editable by admin
+
+    const msg = document.getElementById('modalEditEventMsg');
+    const err = document.getElementById('modalEditEventError');
+    msg.style.display = 'none';
+    err.style.display = 'none';
+
+    if (!title || !venueId || (rolePrefix === 'Admin' && !organizerId)) {
+        err.textContent = '活動標題、場地為必填。管理員模式下主辦方也為必填。';
+        err.style.display = 'block';
+        return;
+    }
+
+    const eventIndex = em_appData.concerts.findIndex(c => c.id === eventId);
+    if (eventIndex === -1) {
+        err.textContent = '找不到要更新的活動。';
+        err.style.display = 'block';
+        return;
+    }
+
+    const venue = em_appData.venues.find(v => v.id === venueId);
+    if (!venue) {
+        err.textContent = '選擇的場地無效。';
+        err.style.display = 'block';
+        return;
+    }
+
+    // Update event data
+    em_appData.concerts[eventIndex].title = title;
+    em_appData.concerts[eventIndex].description = description;
+    em_appData.concerts[eventIndex].imageUrl = imageUrl || null;
+    em_appData.concerts[eventIndex].category = category;
+    em_appData.concerts[eventIndex].venueId = venueId;
+    if (rolePrefix === 'Admin') { // Only admin can change organizer
+        em_appData.concerts[eventIndex].organizerId = organizerId;
+    }
+    // Note: If venue changes, existing sessions' section data might become invalid if the new venue has a different seatMap.
+    // This is a complex scenario. For now, we assume the user is aware or we might need further logic to handle/validate this.
+    // A simple approach could be to warn the user or clear sessions if the venue changes significantly.
+    // For now, we'll just update. If the venue change causes issues with session sections, that's a follow-up.
+
+    em_saveDataCallback();
+    msg.textContent = '活動資訊更新成功！';
+    msg.style.display = 'block';
+
+    setTimeout(() => {
+        em_uiHelpers.removeModal();
+        renderEventListInternal(parentListContainer, rolePrefix === 'Admin' ? 'eventListAdmin' : 'eventListOrg', rolePrefix === 'Admin');
+    }, 1500);
+}
+
+
+// --- Admin-specific event management UI ---
+// 2. renderAdminEventManagementUI: Added parentElement parameter.
+// REMOVING DUPLICATE DEFINITION
+/*
+export function renderAdminEventManagementUI(parentElement, targetContainerId = 'adminContent') {
+    const container = parentElement.querySelector(`#${targetContainerId}`);
+    if (!container) {
+        console.error("Target container for event management not found in parentElement:", targetContainerId, parentElement);
+        parentElement.innerHTML = `<p>錯誤: 票務管理介面容器 #${targetContainerId} 找不到。</p>`;
+        return;
+    }
+    container.innerHTML = `
+    <h3>活動票務管理 (管理員)</h3>
+    <div id="eventListAdmin"></div>
+    <form id="addEventFormAdmin" style="margin-top:1rem; max-width:500px;">
+      <h4>新增主活動</h4>
+      <label for="eventTitleAdmin">主活動標題</label>
+      <input type="text" id="eventTitleAdmin" required />
+      <label for="eventVenueAdmin">場地</label>
+      <select id="eventVenueAdmin" required></select>
+      <label for="eventImageUrlAdmin">主活動圖片 URL</label>
+      <input type="url" id="eventImageUrlAdmin" placeholder="https://example.com/image.jpg" />
+      <button type="submit" style="margin-top:1rem;">建立主活動</button>
+      <p id="addEventMsgAdmin" class="success" style="display:none;"></p>
+      <p id="addEventErrorAdmin" class="error" style="display:none;"></p>
+    </form>
+    <!-- Removed static session form container -->
+  `;
+    em_uiHelpers.populateVenueOptions(container.querySelector('#eventVenueAdmin'), em_appData.venues);
+    // 3. renderEventListInternal: Pass 'container' as the search scope.
+    // Dependencies are passed explicitly for clarity or if they were not module-scoped.
+    renderEventListInternal(container, 'eventListAdmin', true);
+
+    const addEventFormAdmin = container.querySelector('#addEventFormAdmin');
+    if (addEventFormAdmin) {
+        addEventFormAdmin.addEventListener('submit', e => {
+            e.preventDefault();
+            const title = container.querySelector('#eventTitleAdmin').value.trim();
+            const venueId = parseInt(container.querySelector('#eventVenueAdmin').value);
+            const imageUrl = container.querySelector('#eventImageUrlAdmin').value.trim();
+            const msg = container.querySelector('#addEventMsgAdmin');
+            const err = container.querySelector('#addEventErrorAdmin');
+            msg.style.display = 'none';
+            err.style.display = 'none';
+
+            if (!title || !venueId) {
+                err.textContent = '主活動標題和場地為必填欄位';
+                err.style.display = 'block';
+                return;
+            }
+            const venue = em_appData.venues.find(v => v.id === venueId);
+            if (!venue) {
+                err.textContent = '選擇的場地不存在';
+                err.style.display = 'block';
+                return;
+            }
+            
+            let organizerId = 'admin_created'; 
+            const currentUser = em_getCurrentUserCallback ? em_getCurrentUserCallback() : null;
+            if (currentUser) {
+                organizerId = currentUser.username;
+            }
+
+            const id = em_appData.concerts.length ? Math.max(...em_appData.concerts.map(c => c.id)) + 1 : 1;
+            const newEvent = { id, title, venueId, organizerId, imageUrl: imageUrl || null, sessions: [] };
+            em_appData.concerts.push(newEvent);
+            em_saveDataCallback();
+            msg.textContent = '主活動建立成功！現在可以為此活動新增場次。';
+            msg.style.display = 'block';
+            addEventFormAdmin.reset();
+            renderEventListInternal(container, 'eventListAdmin', true);
+            // Pass 'container' to showAddSessionFormAsModal for list refresh context
+            showAddSessionFormAsModal(newEvent, 'Admin', container);
+        });
+    }
+}
+*/
+
+// Function to show modal for editing a session
+// showEditSessionFormAsModal: Added parentListContainer for list refresh context
 function showEditSessionFormAsModal(event, session, rolePrefix, parentListContainer) {
-    const modalTitle = `編輯場次 - ${event.title} (${new Date(session.dateTime).toLocaleDateString()})`;
+    const modalTitle = `編輯場次於 \"${event.title}\"`;
     const venue = em_appData.venues.find(v => v.id === event.venueId);
 
     if (!venue || !venue.seatMap) {
@@ -595,18 +794,14 @@ function showEditSessionFormAsModal(event, session, rolePrefix, parentListContai
     });
     
     const formHtml = `
-        <input type="hidden" id="editModalSelectedEventId" value="${event.id}">
-        <input type="hidden" id="editModalSelectedSessionId" value="${session.sessionId}">
-        <input type="hidden" id="editModalSelectedEventVenueId" value="${event.venueId}">
+        <input type=\"hidden\" id=\"modalEditSelectedEventId\" value=\"${event.id}\">
+        <input type=\"hidden\" id=\"modalEditSelectedSessionId\" value=\"${session.sessionId}\">
+        <input type=\"hidden\" id=\"modalEditSelectedEventVenueId\" value=\"${event.venueId}\">
         <div>
-            <label for="editModalSessionDateTime">場次日期與時間</label>
-            <input type="datetime-local" id="editModalSessionDateTime" value="${session.dateTime.substring(0,16)}" required />
+            <label for=\"modalEditSessionDateTime\">場次日期與時間</label>
+            <input type=\"datetime-local\" id=\"modalEditSessionDateTime\" value=\"${session.dateTime ? new Date(session.dateTime).toISOString().substring(0, 16) : ''}\" required />
         </div>
-        <div>
-            <label for="editModalSessionImageUrl">場次圖片 URL (可選)</label>
-            <input type="url" id="editModalSessionImageUrl" value="${session.sessionImageUrl || ''}" placeholder="https://example.com/session_image.jpg" />
-        </div>
-        <h5 style="margin-top:1rem; margin-bottom:0.5rem;">各區域票價與票數設定:</h5>
+        <h5 style=\"margin-top:1rem; margin-bottom:0.5rem;\">各區域票價與票數設定:</h5>
         ${sectionsHtml}
         <div>
             <label for="editModalSessionSalesStart">售票開始時間</label>
@@ -625,8 +820,8 @@ function showEditSessionFormAsModal(event, session, rolePrefix, parentListContai
             text: '儲存變更',
             className: 'btn-primary',
             onClick: () => {
-                // Pass parentListContainer to handleUpdateSessionFromModal
-                handleUpdateSessionFromModal(rolePrefix, parentListContainer);
+                // Pass parentListContainer to handleSaveEditedSessionFromModal
+                handleSaveEditedSessionFromModal(rolePrefix, parentListContainer);
             }
         },
         {
@@ -636,19 +831,20 @@ function showEditSessionFormAsModal(event, session, rolePrefix, parentListContai
         }
     ];
     em_uiHelpers.createModal(modalTitle, formHtml, modalButtons);
+    // Clear previous values if any (though pre-filling is done above)
+    document.getElementById('modalEditSessionMsg').style.display = 'none';
+    document.getElementById('modalEditSessionError').style.display = 'none';
 }
 
-
-// handleUpdateSessionFromModal: Added 'parentListContainer' for list refresh context
-function handleUpdateSessionFromModal(rolePrefix, parentListContainer) {
-    const eventId = parseInt(document.getElementById('editModalSelectedEventId').value);
-    const sessionId = document.getElementById('editModalSelectedSessionId').value;
-    const venueId = parseInt(document.getElementById('editModalSelectedEventVenueId').value); // Not strictly needed if eventId and sessionId are enough
+// handleSaveEditedSessionFromModal: Added 'parentListContainer' for list refresh context
+function handleSaveEditedSessionFromModal(rolePrefix, parentListContainer) {
+    const eventId = parseInt(document.getElementById('modalEditSelectedEventId').value);
+    const sessionId = document.getElementById('modalEditSelectedSessionId').value;
+    const venueId = parseInt(document.getElementById('modalEditSelectedEventVenueId').value); // Not strictly needed if eventId and sessionId are enough
     
-    const dateTime = document.getElementById('editModalSessionDateTime').value;
-    const sessionImageUrl = document.getElementById('editModalSessionImageUrl').value.trim();
-    const salesStartDateTime = document.getElementById('editModalSessionSalesStart').value;
-    const salesEndDateTime = document.getElementById('editModalSessionSalesEnd').value;
+    const dateTime = document.getElementById('modalEditSessionDateTime').value;
+    const salesStartDateTime = document.getElementById('modalEditSessionSalesStart').value;
+    const salesEndDateTime = document.getElementById('modalEditSessionSalesEnd').value;
 
     const msg = document.getElementById('modalEditSessionMsg');
     const err = document.getElementById('modalEditSessionError');
@@ -746,7 +942,6 @@ function handleUpdateSessionFromModal(rolePrefix, parentListContainer) {
 
     // Update session details
     sessionToUpdate.dateTime = dateTime;
-    sessionToUpdate.sessionImageUrl = sessionImageUrl || null;
     sessionToUpdate.salesStartDateTime = salesStartDateTime;
     sessionToUpdate.salesEndDateTime = salesEndDateTime;
     sessionToUpdate.sections = updatedSectionsData;

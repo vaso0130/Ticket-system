@@ -70,8 +70,11 @@ export function renderVenueManagementUI() {
             const sectionIdInput = row.querySelector('.section-id');
             const sectionNameInput = row.querySelector('.section-name');
             const sectionCapacityInput = row.querySelector('.section-capacity');
+            const seatingTypeSelect = row.querySelector('.section-seating-type');
+            const rowsInput = row.querySelector('.section-rows');
+            const seatsPerRowInput = row.querySelector('.section-seats-per-row');
 
-            if (!sectionIdInput || !sectionNameInput || !sectionCapacityInput) {
+            if (!sectionIdInput || !sectionNameInput || !sectionCapacityInput || !seatingTypeSelect) { // Added seatingTypeSelect check
                 console.error('A section row is missing expected input fields.');
                 err.textContent = '座位分區表單結構錯誤，請聯絡管理員。';
                 sectionError = true;
@@ -81,18 +84,50 @@ export function renderVenueManagementUI() {
             const sectionId = sectionIdInput.value.trim();
             const sectionName = sectionNameInput.value.trim();
             const sectionCapacity = parseInt(sectionCapacityInput.value);
+            const seatingType = seatingTypeSelect.value;
+            const sectionRowsVal = seatingType === 'assigned' ? parseInt(rowsInput.value) : null;
+            const sectionSeatsPerRowVal = seatingType === 'assigned' ? parseInt(seatsPerRowInput.value) : null;
 
             if (!sectionId || !sectionName || isNaN(sectionCapacity) || sectionCapacity <= 0) {
                 err.textContent = '所有座位分區的ID、名稱為必填，容量必須是大於0的數字。';
                 sectionError = true;
                 return;
             }
+            if (seatingType === 'assigned') {
+                if (!rowsInput || !seatsPerRowInput) { // Check if assigned seating specific inputs exist
+                     console.error('Assigned seating section row is missing rows/seatsPerRow input fields.');
+                     err.textContent = '對號入座分區表單結構錯誤，請聯絡管理員。';
+                     sectionError = true;
+                     return;
+                }
+                if (isNaN(sectionRowsVal) || sectionRowsVal <= 0 || isNaN(sectionSeatsPerRowVal) || sectionSeatsPerRowVal <= 0) {
+                    err.textContent = '對號入座分區的行數和每行座位數必須是大於0的數字。';
+                    sectionError = true;
+                    return;
+                }
+                if (sectionRowsVal * sectionSeatsPerRowVal !== sectionCapacity) {
+                    err.textContent = `分區 \"${sectionName}\" 的容量 (${sectionCapacity}) 與行數(${sectionRowsVal})*每行座位數(${sectionSeatsPerRowVal}) (${sectionRowsVal * sectionSeatsPerRowVal}) 不符。請修正。`;
+                    sectionError = true;
+                    return;
+                }
+            }
+
             if (seatMap.some(s => s.id === sectionId)) {
                 err.textContent = `座位分區ID \"${sectionId}\" 重複。請確保每個分區ID的唯一性。`;
                 sectionError = true;
                 return;
             }
-            seatMap.push({ id: sectionId, name: sectionName, capacity: sectionCapacity });
+            const sectionData = { 
+                id: sectionId, 
+                name: sectionName, 
+                capacity: sectionCapacity, 
+                seatingType: seatingType 
+            };
+            if (seatingType === 'assigned') {
+                sectionData.rows = sectionRowsVal;
+                sectionData.seatsPerRow = sectionSeatsPerRowVal;
+            }
+            seatMap.push(sectionData);
             totalCapacity += sectionCapacity;
         });
 
@@ -118,27 +153,90 @@ export function renderVenueManagementUI() {
     });
 }
 
-function addSeatSectionInputRow(containerId, section = { id: '', name: '', capacity: '' }) {
+function addSeatSectionInputRow(containerId, section = { id: '', name: '', capacity: '', seatingType: 'general', rows: '', seatsPerRow: '' }) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     const sectionRow = document.createElement('div');
     sectionRow.className = 'seat-section-row';
     sectionRow.style.display = 'flex';
-    sectionRow.style.alignItems = 'center'; // Align items vertically
+    sectionRow.style.flexWrap = 'wrap'; // Allow wrapping for smaller screens
+    sectionRow.style.alignItems = 'flex-start'; // Align items to the top
     sectionRow.style.gap = '10px';
     sectionRow.style.marginBottom = '10px';
     sectionRow.style.padding = '10px';
     sectionRow.style.border = '1px dashed #ccc';
     sectionRow.style.borderRadius = '4px';
 
+    // Create unique IDs for elements within this row to avoid conflicts
+    const uniqueSuffix = Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+
     sectionRow.innerHTML = `
-        <input type="text" class="section-id" placeholder="分區ID (例:A)" value="${section.id}" required style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        <input type="text" class="section-name" placeholder="分區名稱 (例:A區)" value="${section.name}" required style="flex:2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        <input type="number" class="section-capacity" placeholder="分區容量" value="${section.capacity}" min="1" required style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        <button type="button" class="remove-section-row-btn small-btn btn-danger" style="flex-shrink:0; padding: 8px 12px;">移除</button>
+        <div style="flex: 1 1 100%; margin-bottom: 5px;">
+            <label for="sectionId_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區ID</label>
+            <input type="text" id="sectionId_${uniqueSuffix}" class="section-id" placeholder="分區ID (例:A)" value="${section.id}" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 2 1 100%; margin-bottom: 5px;">
+            <label for="sectionName_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區名稱</label>
+            <input type="text" id="sectionName_${uniqueSuffix}" class="section-name" placeholder="分區名稱 (例:A區)" value="${section.name}" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1 1 100%; margin-bottom: 5px;">
+            <label for="seatingType_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">座位類型</label>
+            <select id="seatingType_${uniqueSuffix}" class="section-seating-type" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <option value="general" ${section.seatingType === 'general' ? 'selected' : ''}>自由入座</option>
+                <option value="assigned" ${section.seatingType === 'assigned' ? 'selected' : ''}>對號入座</option>
+            </select>
+        </div>
+        <div id="assignedSeatingFields_${uniqueSuffix}" style="flex: 1 1 100%; display: ${section.seatingType === 'assigned' ? 'flex' : 'none'}; gap: 10px; flex-wrap: wrap;">
+            <div style="flex: 1 1 calc(50% - 5px); margin-bottom: 5px;">
+                <label for="sectionRows_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">行數</label>
+                <input type="number" id="sectionRows_${uniqueSuffix}" class="section-rows" placeholder="行數" value="${section.rows || ''}" min="1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            <div style="flex: 1 1 calc(50% - 5px); margin-bottom: 5px;">
+                <label for="sectionSeatsPerRow_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">每行座位數</label>
+                <input type="number" id="sectionSeatsPerRow_${uniqueSuffix}" class="section-seats-per-row" placeholder="每行座位數" value="${section.seatsPerRow || ''}" min="1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+            </div>
+        </div>
+        <div style="flex: 1 1 100%; margin-bottom: 5px;">
+            <label for="sectionCapacity_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區容量</label>
+            <input type="number" id="sectionCapacity_${uniqueSuffix}" class="section-capacity" placeholder="分區容量" value="${section.capacity}" min="1" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" ${section.seatingType === 'assigned' ? 'readonly' : ''}>
+        </div>
+        <div style="flex: 0 0 auto; align-self: flex-end; margin-bottom: 5px;"> <!-- Ensure button aligns with bottom of other inputs if they wrap -->
+             <button type="button" class="remove-section-row-btn small-btn btn-danger" style="padding: 8px 12px;">移除</button>
+        </div>
     `;
     container.appendChild(sectionRow);
+
+    const seatingTypeSelect = sectionRow.querySelector(`.section-seating-type`);
+    const assignedFieldsDiv = sectionRow.querySelector(`#assignedSeatingFields_${uniqueSuffix}`);
+    const rowsInput = sectionRow.querySelector(`.section-rows`);
+    const seatsPerRowInput = sectionRow.querySelector(`.section-seats-per-row`);
+    const capacityInput = sectionRow.querySelector(`.section-capacity`);
+
+    function updateCapacityAndFields() {
+        if (seatingTypeSelect.value === 'assigned') {
+            assignedFieldsDiv.style.display = 'flex';
+            capacityInput.readOnly = true;
+            const rows = parseInt(rowsInput.value) || 0;
+            const seatsPerRow = parseInt(seatsPerRowInput.value) || 0;
+            capacityInput.value = rows * seatsPerRow;
+        } else { // general
+            assignedFieldsDiv.style.display = 'none';
+            capacityInput.readOnly = false;
+            // For general admission, capacity is manually entered, so we don't auto-clear it here
+            // unless it was previously calculated and now we switch.
+            // If section.capacity was provided and type was general, it should persist.
+            // If switching from assigned, it might be good to clear or prompt. For now, it keeps the calculated value.
+        }
+    }
+
+    seatingTypeSelect.addEventListener('change', updateCapacityAndFields);
+    rowsInput.addEventListener('input', updateCapacityAndFields);
+    seatsPerRowInput.addEventListener('input', updateCapacityAndFields);
+
+    // Initial call to set state based on pre-filled section data (e.g. when editing)
+    updateCapacityAndFields();
+
 
     sectionRow.querySelector('.remove-section-row-btn').addEventListener('click', () => {
         sectionRow.remove();
@@ -165,7 +263,13 @@ function renderVenueListInternal() {
         let seatMapHtml = '<ul style="font-size:0.9em; padding-left:15px; margin-top:5px; list-style-type: disc;">';
         if (v.seatMap && v.seatMap.length > 0) {
             v.seatMap.forEach(s => {
-                seatMapHtml += `<li>${s.name} (ID: ${s.id}, 容量: ${s.capacity})</li>`;
+                let details = `容量: ${s.capacity}`;
+                if (s.seatingType === 'assigned') {
+                    details += `, 對號入座 (${s.rows}行 x ${s.seatsPerRow}座/行)`
+                } else {
+                    details += `, 自由入座`;
+                }
+                seatMapHtml += `<li>${s.name} (ID: ${s.id}, ${details})</li>`;
             });
         } else {
             seatMapHtml += '<li>尚未設定座位分區</li>';
@@ -245,15 +349,43 @@ function showEditVenueModal(venue) {
     const modalTitle = `編輯場地: ${venue.name}`;
     let seatMapEditorHtml = '<div id="editVenueSeatMapContainerModal" style="padding: 10px; border: 1px solid #eee; margin-bottom:1rem; background-color:#f9f9f9;">';
     if (venue.seatMap && venue.seatMap.length > 0) {
-        venue.seatMap.forEach(s => {
-            // Generate unique IDs for modal inputs to avoid conflicts if multiple modals are somehow present
-            const uniqueInputIdSuffix = `${venue.id}_${s.id}`.replace(/\W/g, '_'); // Sanitize for ID
+        venue.seatMap.forEach((s, index) => { // Added index for unique IDs
+            const uniqueInputIdSuffix = `edit_${venue.id}_${s.id}_${index}`.replace(/\W/g, '_'); // Ensure more unique IDs
+            const isAssigned = s.seatingType === 'assigned';
             seatMapEditorHtml += `
-                <div class="seat-section-row" data-section-id-orig="${s.id}" style="display:flex; align-items:center; gap:10px; margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:4px;">
-                    <input type="text" id="sectionIdModal_${uniqueInputIdSuffix}" class="section-id-modal" placeholder="分區ID" value="${s.id}" required style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <input type="text" id="sectionNameModal_${uniqueInputIdSuffix}" class="section-name-modal" placeholder="分區名稱" value="${s.name}" required style="flex:2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <input type="number" id="sectionCapacityModal_${uniqueInputIdSuffix}" class="section-capacity-modal" placeholder="容量" value="${s.capacity}" min="1" required style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <button type="button" class="remove-section-row-btn-modal small-btn btn-danger" style="flex-shrink:0; padding: 8px 12px;">移除</button>
+                <div class="seat-section-row" data-section-id-orig="${s.id}" style="display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px; margin-bottom:10px; padding:10px; border:1px dashed #ccc; border-radius:4px;">
+                    <div style="flex: 1 1 100%; margin-bottom: 5px;">
+                        <label for="sectionIdModal_${uniqueInputIdSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區ID</label>
+                        <input type="text" id="sectionIdModal_${uniqueInputIdSuffix}" class="section-id-modal" placeholder="分區ID" value="${s.id}" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div style="flex: 2 1 100%; margin-bottom: 5px;">
+                        <label for="sectionNameModal_${uniqueInputIdSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區名稱</label>
+                        <input type="text" id="sectionNameModal_${uniqueInputIdSuffix}" class="section-name-modal" placeholder="分區名稱" value="${s.name}" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
+                    <div style="flex: 1 1 100%; margin-bottom: 5px;">
+                        <label for="seatingTypeModal_${uniqueInputIdSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">座位類型</label>
+                        <select id="seatingTypeModal_${uniqueInputIdSuffix}" class="section-seating-type-modal" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                            <option value="general" ${s.seatingType === 'general' ? 'selected' : ''}>自由入座</option>
+                            <option value="assigned" ${s.seatingType === 'assigned' ? 'selected' : ''}>對號入座</option>
+                        </select>
+                    </div>
+                    <div id="assignedSeatingFieldsModal_${uniqueInputIdSuffix}" class="assigned-seating-fields-modal" style="flex: 1 1 100%; display: ${isAssigned ? 'flex' : 'none'}; gap: 10px; flex-wrap: wrap;">
+                        <div style="flex: 1 1 calc(50% - 5px); margin-bottom: 5px;">
+                            <label for="sectionRowsModal_${uniqueInputIdSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">行數</label>
+                            <input type="number" id="sectionRowsModal_${uniqueInputIdSuffix}" class="section-rows-modal" placeholder="行數" value="${s.rows || ''}" min="1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                        <div style="flex: 1 1 calc(50% - 5px); margin-bottom: 5px;">
+                            <label for="sectionSeatsPerRowModal_${uniqueInputIdSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">每行座位數</label>
+                            <input type="number" id="sectionSeatsPerRowModal_${uniqueInputIdSuffix}" class="section-seats-per-row-modal" placeholder="每行座位數" value="${s.seatsPerRow || ''}" min="1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                        </div>
+                    </div>
+                    <div style="flex: 1 1 100%; margin-bottom: 5px;">
+                        <label for="sectionCapacityModal_${uniqueInputIdSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區容量</label>
+                        <input type="number" id="sectionCapacityModal_${uniqueInputIdSuffix}" class="section-capacity-modal" placeholder="容量" value="${s.capacity}" min="1" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" ${isAssigned ? 'readonly' : ''}>
+                    </div>
+                    <div style="flex: 0 0 auto; align-self: flex-end; margin-bottom: 5px;">
+                        <button type="button" class="remove-section-row-btn-modal small-btn btn-danger" style="padding: 8px 12px;">移除</button>
+                    </div>
                 </div>
             `;
         });
@@ -291,6 +423,36 @@ function showEditVenueModal(venue) {
             if (rowToRemove) rowToRemove.remove();
         });
     });
+
+    // Add event listeners for dynamic fields within each existing section row in the modal
+    modal.box.querySelectorAll('#editVenueSeatMapContainerModal .seat-section-row').forEach(sectionRowElement => {
+        const seatingTypeSelect = sectionRowElement.querySelector('.section-seating-type-modal');
+        const assignedFieldsDiv = sectionRowElement.querySelector('.assigned-seating-fields-modal'); // Direct child selector might be needed if IDs are not unique enough
+        const rowsInput = sectionRowElement.querySelector('.section-rows-modal');
+        const seatsPerRowInput = sectionRowElement.querySelector('.section-seats-per-row-modal');
+        const capacityInput = sectionRowElement.querySelector('.section-capacity-modal');
+        
+        if (seatingTypeSelect && assignedFieldsDiv && rowsInput && seatsPerRowInput && capacityInput) {
+            function updateModalCapacityAndFields() {
+                if (seatingTypeSelect.value === 'assigned') {
+                    assignedFieldsDiv.style.display = 'flex';
+                    capacityInput.readOnly = true;
+                    const rows = parseInt(rowsInput.value) || 0;
+                    const seatsPerRow = parseInt(seatsPerRowInput.value) || 0;
+                    capacityInput.value = rows * seatsPerRow;
+                } else { // general
+                    assignedFieldsDiv.style.display = 'none';
+                    capacityInput.readOnly = false;
+                }
+            }
+            seatingTypeSelect.addEventListener('change', updateModalCapacityAndFields);
+            rowsInput.addEventListener('input', updateModalCapacityAndFields);
+            seatsPerRowInput.addEventListener('input', updateModalCapacityAndFields);
+            // Initial call to set state for existing rows
+            updateModalCapacityAndFields(); 
+        }
+    });
+
     // Add event listener for add section button in modal
     modal.box.querySelector('#addSeatSectionBtnModal').addEventListener('click', () => {
         // Use a different function or ensure IDs are unique if reusing addSeatSectionInputRow
@@ -298,19 +460,19 @@ function showEditVenueModal(venue) {
     });
 }
 
-function addSeatSectionInputRowToModal(containerId, section = { id: '', name: '', capacity: '' }) {
+function addSeatSectionInputRowToModal(containerId, section = { id: '', name: '', capacity: '', seatingType: 'general', rows: '', seatsPerRow: '' }) {
     const container = document.getElementById(containerId); 
     if (!container) {
         console.error("Modal container for seat sections not found:", containerId);
         return;
     }
 
-    // Generate a unique suffix for new rows in the modal to avoid ID clashes if user adds multiple new rows
-    const newRowSuffix = `new_${Date.now()}`;
+    const uniqueSuffix = `modal_new_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const sectionRow = document.createElement('div');
     sectionRow.className = 'seat-section-row';
     sectionRow.style.display = 'flex';
-    sectionRow.style.alignItems = 'center';
+    sectionRow.style.flexWrap = 'wrap';
+    sectionRow.style.alignItems = 'flex-start';
     sectionRow.style.gap = '10px';
     sectionRow.style.marginBottom = '10px';
     sectionRow.style.padding = '10px';
@@ -318,12 +480,65 @@ function addSeatSectionInputRowToModal(containerId, section = { id: '', name: ''
     sectionRow.style.borderRadius = '4px';
 
     sectionRow.innerHTML = `
-        <input type="text" id="sectionIdModal_${newRowSuffix}" class="section-id-modal" placeholder="分區ID" value="${section.id}" required style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        <input type="text" id="sectionNameModal_${newRowSuffix}" class="section-name-modal" placeholder="分區名稱" value="${section.name}" required style="flex:2; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        <input type="number" id="sectionCapacityModal_${newRowSuffix}" class="section-capacity-modal" placeholder="容量" value="${section.capacity}" min="1" required style="flex:1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-        <button type="button" class="remove-section-row-btn-modal small-btn btn-danger" style="flex-shrink:0; padding: 8px 12px;">移除</button>
+        <div style="flex: 1 1 100%; margin-bottom: 5px;">
+            <label for="sectionIdModal_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區ID</label>
+            <input type="text" id="sectionIdModal_${uniqueSuffix}" class="section-id-modal" placeholder="分區ID" value="${section.id}" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 2 1 100%; margin-bottom: 5px;">
+            <label for="sectionNameModal_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區名稱</label>
+            <input type="text" id="sectionNameModal_${uniqueSuffix}" class="section-name-modal" placeholder="分區名稱" value="${section.name}" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1 1 100%; margin-bottom: 5px;">
+            <label for="seatingTypeModal_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">座位類型</label>
+            <select id="seatingTypeModal_${uniqueSuffix}" class="section-seating-type-modal" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <option value="general" ${section.seatingType === 'general' ? 'selected' : ''}>自由入座</option>
+                <option value="assigned" ${section.seatingType === 'assigned' ? 'selected' : ''}>對號入座</option>
+            </select>
+        </div>
+        <div id="assignedSeatingFieldsModal_${uniqueSuffix}" style="flex: 1 1 100%; display: ${section.seatingType === 'assigned' ? 'flex' : 'none'}; gap: 10px; flex-wrap: wrap;">
+            <div style="flex: 1 1 calc(50% - 5px); margin-bottom: 5px;">
+                <label for="sectionRowsModal_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">行數</label>
+                <input type="number" id="sectionRowsModal_${uniqueSuffix}" class="section-rows-modal" placeholder="行數" value="${section.rows || ''}" min="1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            <div style="flex: 1 1 calc(50% - 5px); margin-bottom: 5px;">
+                <label for="sectionSeatsPerRowModal_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">每行座位數</label>
+                <input type="number" id="sectionSeatsPerRowModal_${uniqueSuffix}" class="section-seats-per-row-modal" placeholder="每行座位數" value="${section.seatsPerRow || ''}" min="1" style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+            </div>
+        </div>
+        <div style="flex: 1 1 100%; margin-bottom: 5px;">
+            <label for="sectionCapacityModal_${uniqueSuffix}" style="display:block; font-size:0.9em; margin-bottom:2px;">分區容量</label>
+            <input type="number" id="sectionCapacityModal_${uniqueSuffix}" class="section-capacity-modal" placeholder="容量" value="${section.capacity}" min="1" required style="width:100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" ${section.seatingType === 'assigned' ? 'readonly' : ''}>
+        </div>
+        <div style="flex: 0 0 auto; align-self: flex-end; margin-bottom: 5px;">
+            <button type="button" class="remove-section-row-btn-modal small-btn btn-danger" style="padding: 8px 12px;">移除</button>
+        </div>
     `;
     container.appendChild(sectionRow);
+
+    const seatingTypeSelect = sectionRow.querySelector(`.section-seating-type-modal`);
+    const assignedFieldsDiv = sectionRow.querySelector(`#assignedSeatingFieldsModal_${uniqueSuffix}`);
+    const rowsInput = sectionRow.querySelector(`.section-rows-modal`);
+    const seatsPerRowInput = sectionRow.querySelector(`.section-seats-per-row-modal`);
+    const capacityInput = sectionRow.querySelector(`.section-capacity-modal`);
+
+    function updateCapacityAndFieldsModal() {
+        if (seatingTypeSelect.value === 'assigned') {
+            assignedFieldsDiv.style.display = 'flex';
+            capacityInput.readOnly = true;
+            const rows = parseInt(rowsInput.value) || 0;
+            const seatsPerRow = parseInt(seatsPerRowInput.value) || 0;
+            capacityInput.value = rows * seatsPerRow;
+        } else { // general
+            assignedFieldsDiv.style.display = 'none';
+            capacityInput.readOnly = false;
+        }
+    }
+
+    seatingTypeSelect.addEventListener('change', updateCapacityAndFieldsModal);
+    rowsInput.addEventListener('input', updateCapacityAndFieldsModal);
+    seatsPerRowInput.addEventListener('input', updateCapacityAndFieldsModal);
+    
+    updateCapacityAndFieldsModal(); // Initial call
 
     sectionRow.querySelector('.remove-section-row-btn-modal').addEventListener('click', () => {
         sectionRow.remove();
@@ -359,8 +574,11 @@ function handleSaveVenueChanges(venueId) {
         const sectionIdInput = row.querySelector('.section-id-modal');
         const sectionNameInput = row.querySelector('.section-name-modal');
         const sectionCapacityInput = row.querySelector('.section-capacity-modal');
+        const seatingTypeSelect = row.querySelector('.section-seating-type-modal'); // Added for modal
+        const rowsInput = row.querySelector('.section-rows-modal'); // Added for modal
+        const seatsPerRowInput = row.querySelector('.section-seats-per-row-modal'); // Added for modal
 
-        if (!sectionIdInput || !sectionNameInput || !sectionCapacityInput) {
+        if (!sectionIdInput || !sectionNameInput || !sectionCapacityInput || !seatingTypeSelect) { // Added seatingTypeSelect check
             console.error('A modal section row is missing expected input fields.');
             errModal.textContent = '座位分區表單結構錯誤(modal)，請聯絡管理員。';
             sectionError = true;
@@ -369,18 +587,52 @@ function handleSaveVenueChanges(venueId) {
         const sectionId = sectionIdInput.value.trim();
         const sectionName = sectionNameInput.value.trim();
         const sectionCapacity = parseInt(sectionCapacityInput.value);
+        const seatingType = seatingTypeSelect.value;
+        const sectionRowsVal = seatingType === 'assigned' ? parseInt(rowsInput.value) : null;
+        const sectionSeatsPerRowVal = seatingType === 'assigned' ? parseInt(seatsPerRowInput.value) : null;
 
         if (!sectionId || !sectionName || isNaN(sectionCapacity) || sectionCapacity <= 0) {
             errModal.textContent = '所有座位分區的ID、名稱為必填，容量必須是大於0的數字。';
             sectionError = true;
             return;
         }
+
+        if (seatingType === 'assigned') {
+            if (!rowsInput || !seatsPerRowInput) { // Check if assigned seating specific inputs exist
+                 console.error('Assigned seating section row in modal is missing rows/seatsPerRow input fields.');
+                 errModal.textContent = '對號入座分區表單結構錯誤(modal)，請聯絡管理員。';
+                 sectionError = true;
+                 return;
+            }
+            if (isNaN(sectionRowsVal) || sectionRowsVal <= 0 || isNaN(sectionSeatsPerRowVal) || sectionSeatsPerRowVal <= 0) {
+                errModal.textContent = '對號入座分區的行數和每行座位數必須是大於0的數字。';
+                sectionError = true;
+                return;
+            }
+            if (sectionRowsVal * sectionSeatsPerRowVal !== sectionCapacity) {
+                errModal.textContent = `分區 \"${sectionName}\" 的容量 (${sectionCapacity}) 與行數(${sectionRowsVal})*每行座位數(${sectionSeatsPerRowVal}) (${sectionRowsVal * sectionSeatsPerRowVal}) 不符。請修正。`;
+                sectionError = true;
+                return;
+            }
+        }
+
         if (seatMap.some(s => s.id === sectionId)) {
             errModal.textContent = `座位分區ID \"${sectionId}\" 重複。請確保每個分區ID的唯一性。`;
             sectionError = true;
             return;
         }
-        seatMap.push({ id: sectionId, name: sectionName, capacity: sectionCapacity });
+        
+        const sectionData = {
+            id: sectionId, 
+            name: sectionName, 
+            capacity: sectionCapacity,
+            seatingType: seatingType
+        };
+        if (seatingType === 'assigned') {
+            sectionData.rows = sectionRowsVal;
+            sectionData.seatsPerRow = sectionSeatsPerRowVal;
+        }
+        seatMap.push(sectionData);
         totalCapacity += sectionCapacity;
     });
 

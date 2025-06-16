@@ -36,11 +36,23 @@ export function renderOrganizerDashboardUI() {
     </nav>
     <section id="organizerContent"></section>
     `;
-    document.getElementById('orgTicketsBtn').onclick = () => renderOrganizerEventManagementUI('organizerContent'); // Use new event module UI
+    const organizerContentElement = mainContentRef.querySelector('#organizerContent');
+
+    document.getElementById('orgTicketsBtn').onclick = () => {
+        if (organizerContentElement) {
+            renderOrganizerEventManagementUI(organizerContentElement); 
+        } else {
+            console.error("Organizer content element not found for orgTicketsBtn");
+        }
+    };
     document.getElementById('orgAccountingBtn').onclick = () => renderOrgAccounting();
 
     // Default show tickets (now handled by event management)
-    renderOrganizerEventManagementUI('organizerContent');
+    if (organizerContentElement) {
+        renderOrganizerEventManagementUI(organizerContentElement);
+    } else {
+        console.error("Organizer content element not found for default render");
+    }
 }
 
 // Organizer accounting - similar to admin accounting but no edit

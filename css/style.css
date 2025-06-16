@@ -6,6 +6,7 @@
   --text-color: #263238; /* 深灰藍色 */
   --border-radius: 10px; /* 稍微增加圓角 */
   --max-width: 960px; /* 稍微增加最大寬度 */
+  --info-color: #2196F3; /* 新增：資訊藍色 */
 }
 * {
   box-sizing: border-box;
@@ -370,3 +371,204 @@ h2 {
         width: 100%; /* 按鈕滿寬 */
     }
 }
+
+/* Spinner Animation */
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: var(--primary-color, #007bff); /* Use primary color if defined */
+  animation: spin 1s ease infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modal content centering for spinner */
+.modal-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+/* General List Styles */
+.concert-list, .tickets-list, .venue-list, .event-list, .session-list, .section-list {
+  list-style: none;
+  padding: 0;
+}
+.concert-list li, .tickets-list li, .venue-list li, .event-list li, .session-list li, .section-list li {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  display: flex; /* Default for most lists */
+  justify-content: space-between; /* Default for most lists */
+  align-items: center; /* Default for most lists */
+}
+
+/* Spectator Concert List Specific Styles */
+.spectator-concert-list {
+    display: flex;
+    flex-wrap: wrap; /* Allow items to wrap to the next line */
+    gap: 1rem; /* Space between items */
+}
+
+.concert-item-spectator {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    /* flex-basis: calc(50% - 0.5rem); /* Two items per row, accounting for gap */
+    /* flex-grow: 1; */
+    width: calc(50% - 0.5rem); /* Default to two columns, adjust with media queries */
+    margin-bottom: 1rem; /* Keep consistent margin */
+    display: flex; /* Changed to flex for internal layout */
+    flex-direction: column; /* Stack clickable area and sessions vertically */
+    overflow: hidden; /* Ensure border radius is respected by children */
+}
+
+.concert-item-clickable-area {
+    cursor: pointer;
+    padding: 1rem;
+}
+
+.concert-item-spectator-image {
+    width: 100%;
+    height: 200px; /* Increased image height */
+    object-fit: cover;
+    border-radius: calc(var(--border-radius) - 1px) calc(var(--border-radius) - 1px) 0 0; /* Match parent top radius */
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.concert-item-spectator-image-placeholder {
+    width: 100%;
+    height: 200px;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #aaa;
+    font-style: italic;
+    border-radius: calc(var(--border-radius) - 1px) calc(var(--border-radius) - 1px) 0 0;
+    margin-bottom: 0.5rem;
+}
+
+.concert-item-spectator-info h4 {
+    margin-top: 0;
+    margin-bottom: 0.3rem;
+    font-size: 1.2rem;
+    color: var(--primary-color);
+}
+
+.concert-item-spectator-info .venue-name {
+    font-size: 0.9em;
+    color: #555;
+    margin-bottom: 0.2rem;
+}
+
+.concert-item-spectator-info .concert-description {
+    font-size: 0.85em;
+    color: #777;
+    white-space: pre-wrap;
+    margin-bottom: 0;
+}
+
+.sessions-list-spectator {
+    padding: 0 1rem 1rem 1rem; /* Padding for sessions when visible */
+    background-color: #f9f9f9; /* Slightly different background for session section */
+}
+
+.session-item-spectator {
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: var(--border-radius);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+}
+
+.session-item-image {
+    width: 80px; 
+    height: 60px; 
+    object-fit: cover; 
+    margin-right: 10px; 
+    border-radius: 3px;
+}
+
+.session-item-info-content {
+    flex-grow: 1; 
+    display:flex; 
+    align-items:center;
+}
+
+.session-item-info-content strong {
+    font-size: 1em;
+}
+
+.session-sale-dates, .session-tickets-left {
+    font-size:0.85em;
+    color: #666;
+}
+
+.session-item-actions {
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.ticket-status-soldout {
+    color: #e53935; /* Red */
+    font-weight: 600;
+}
+
+.ticket-status-not-on-sale {
+    color: #757575; /* Grey */
+    font-weight: 600;
+}
+
+.buy-ticket-btn {
+    /* Styles for buy button if needed, can inherit from small-btn or override */
+}
+
+/* Responsive adjustments for concert list */
+@media (max-width: 768px) {
+    .concert-item-spectator {
+        width: 100%; /* Single column on smaller screens */
+        /* flex-basis: 100%; */
+    }
+}
+
+@media (min-width: 769px) and (max-width: 960px) {
+    .concert-item-spectator {
+         width: calc(50% - 0.5rem); /* Two columns for medium screens */
+        /* flex-basis: calc(50% - 0.5rem); */
+    }
+}
+
+/* Ensure ul itself doesn't have conflicting flex styles if it was a flex container before */
+#spectatorConcertList.concert-list {
+    /* display: flex; /* This is already set by .spectator-concert-list */
+    /* flex-wrap: wrap; /* This is already set by .spectator-concert-list */
+    /* justify-content: flex-start; /* Or space-between, depending on desired alignment */
+    /* padding: 0; */ /* Already in .concert-list */
+    /* list-style: none; */ /* Already in .concert-list */
+}
+
+
+/* Modal Styles */
