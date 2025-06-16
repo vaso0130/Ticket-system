@@ -612,3 +612,76 @@ h2 {
 @media (max-width: 600px) {
   .carousel-slide img { height: 200px; }
 }
+
+/* 首頁全螢幕輪播樣式 */
+.full-bg-carousel {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+.full-bg-carousel .carousel-slides {
+  width: 100vw;
+  height: 100vh;
+}
+.full-bg-carousel .carousel-slide {
+  min-width: 100vw;
+  min-height: 100vh;
+  display: none;
+  position: absolute;
+  top: 0; left: 0;
+}
+.full-bg-carousel .carousel-slide.active {
+  display: block;
+}
+.full-bg-carousel .carousel-slide img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  border-radius: 0;
+}
+.full-bg-carousel .slide-info {
+  position: absolute;
+  left: 0; right: 0; bottom: 80px;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  padding: 2rem 1rem 1.5rem 1rem;
+  text-align: center;
+  font-size: 1.5rem;
+  backdrop-filter: blur(6px);
+}
+.overlay-login-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  z-index: 10;
+  font-size: 1.3rem;
+  padding: 0.9rem 2.5rem;
+  background: var(--primary-color);
+  border-radius: 2rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  border: none;
+  color: #fff;
+  transition: background 0.3s;
+}
+.overlay-login-btn:hover {
+  background: var(--accent-color);
+}
+body, #app, main, .home-carousel {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#app {
+  min-height: 0 !important;
+  box-shadow: none !important;
+}
+main#mainContent {
+  padding: 0 !important;
+}

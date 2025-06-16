@@ -106,11 +106,11 @@ function renderHomePage() {
   }).join('');
 
   mainContent.innerHTML = `
-    <div class="home-carousel">
+    <div class="home-carousel full-bg-carousel">
       <div class="carousel-slides" id="carouselSlides">
         ${carouselSlides}
       </div>
-      <button id="homeLoginBtn" class="home-login-btn">立即登入</button>
+      <button id="homeLoginBtn" class="home-login-btn overlay-login-btn">立即登入</button>
     </div>
   `;
 
