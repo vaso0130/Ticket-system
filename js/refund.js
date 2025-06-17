@@ -72,12 +72,12 @@ function processRefundRequest(ticket, modal) { // ticket is a single ticket obje
                     }
                 }
                 saveDataCallbackRef();
-                alert(`票券 (ID: ${ticket.id}) 已自動退票。`);
+                createModal('完成', `<p>票券 (ID: ${ticket.id}) 已自動退票。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
             } else {
                 ticketToUpdate.status = 'refund_pending';
                 ticketToUpdate.refundRequestTime = now;
                 saveDataCallbackRef();
-                alert(`票券 (ID: ${ticket.id}) 已提交退票申請。`);
+                createModal('完成', `<p>票券 (ID: ${ticket.id}) 已提交退票申請。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
             }
             removeModal(modal.overlay);
             if (onRefundUpdateCallbackRef) {

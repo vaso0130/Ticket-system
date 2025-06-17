@@ -519,14 +519,14 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
                         }
 
                         if (ticketsSoldInSession > 0) {
-                            alert(`無法刪除場次 ${sessionId}，因為已有 ${ticketsSoldInSession} 張票售出。請先處理相關票券。`);
+                            createModal('提示', `<p>無法刪除場次 ${sessionId}，因為已有 ${ticketsSoldInSession} 張票售出。請先處理相關票券。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
                             return;
                         }
 
                         event.sessions.splice(sessionIndex, 1);
                         em_saveDataCallback();
                         renderEventListInternal(searchScopeElement, listElementId, isAdminView); // Refresh list
-                        alert(`場次 ${sessionId} 已成功刪除。`);
+                        createModal('完成', `<p>場次 ${sessionId} 已成功刪除。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
                     }
                 }
             }
@@ -552,14 +552,14 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
                     }
 
                     if (totalTicketsSoldInEvent > 0) {
-                        alert(`無法刪除活動 ${eventToDelete.title}，因為其下場次總共已售出 ${totalTicketsSoldInEvent} 張票。請先處理相關票券。`);
+                        createModal('提示', `<p>無法刪除活動 ${eventToDelete.title}，因為其下場次總共已售出 ${totalTicketsSoldInEvent} 張票。請先處理相關票券。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
                         return;
                     }
                     
                     em_appData.concerts.splice(eventIndex, 1);
                     em_saveDataCallback();
                     renderEventListInternal(searchScopeElement, listElementId, isAdminView); // Refresh list
-                    alert(`活動 ID ${eventId} 已成功刪除。`);
+                    createModal('完成', `<p>活動 ID ${eventId} 已成功刪除。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
                 }
             }
         });

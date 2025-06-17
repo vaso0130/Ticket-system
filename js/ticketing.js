@@ -317,7 +317,7 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
                 buyError.style.display = 'block';
                 return;
             }
-        } else if (venueSectionLayout.seatingType === 'general') {
+        } else if (venueSectionLayout.seatingType === 'general' || venueSectionLayout.seatingType === 'generalAdmission') {
             requestedQuantity = parseInt(quantityInput.value);
             if (isNaN(requestedQuantity) || requestedQuantity < 1) {
                 buyError.textContent = '請輸入有效的購買數量。';

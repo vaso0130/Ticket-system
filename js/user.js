@@ -395,7 +395,17 @@ function renderMyTickets(containerElement) {
                     document.getElementById('claim-result').innerHTML = `<p>請持代碼 <b>${code}</b> 至超商領取實體票券</p>`;
                   };
                   document.getElementById('claim-qr').onclick = () => {
-                    document.getElementById('claim-result').innerHTML = `<p>QR電子票券將於演唱會前一小時開放領取</p>`;
+                    const qrCanvas = document.createElement('canvas');
+                    const data = `ticket:${t.ticketId}`;
+                    QRCode.toCanvas(qrCanvas, data, { width: 180 }, function (error) {
+                      if (error) {
+                        document.getElementById('claim-result').innerHTML = '<p>無法產生 QR Code</p>';
+                      } else {
+                        const result = document.getElementById('claim-result');
+                        result.innerHTML = '';
+                        result.appendChild(qrCanvas);
+                      }
+                    });
                   };
                   document.getElementById('claim-cancel').onclick = () => {
                     import('./ui.js').then(mod => mod.removeModal());
@@ -405,7 +415,49 @@ function renderMyTickets(containerElement) {
         }
         actionsDiv.appendChild(claimBtn);
 
+        if (t.status === 'normal' || t.status === 'confirmed') {
+            const transferBtn = document.createElement('button');
+            transferBtn.className = 'small-btn transfer-button';
+            transferBtn.textContent = '轉移';
+            transferBtn.onclick = () => handleShowTransferTicketModal(t, () => renderMyTickets(containerElement));
+            actionsDiv.appendChild(transferBtn);
+        }
+
         li.appendChild(actionsDiv);
         ul.appendChild(li);
     });
 }
+
+function handleShowTransferTicketModal(ticket, refreshCb) {
+    const modal = createModal('轉移票券', `\
+      <p>將票券 ${ticket.ticketId} 轉移給哪個帳號？</p>\
+      <input type="text" id="transferToUser" placeholder="輸入對方帳號">\
+      <p id="transferError" class="error" style="display:none;"></p>\
+      <div style='margin-top:1rem; text-align:right;'>\
+        <button id='transferCancel' style='margin-right:0.5rem; background:#888;'>取消</button>\
+        <button id='transferConfirm'>確認</button>\
+      </div>`);
+    modal.box.querySelector('#transferCancel').onclick = () => removeModal(modal.overlay);
+    modal.box.querySelector('#transferConfirm').onclick = () => {
+        const targetUser = modal.box.querySelector('#transferToUser').value.trim();
+        const err = modal.box.querySelector('#transferError');
+        if (!targetUser) {
+            err.textContent = '請輸入帳號';
+            err.style.display = 'block';
+            return;
+        }
+        const userExists = appDataRef.users.find(u => u.username === targetUser);
+        if (!userExists) {
+            err.textContent = '帳號不存在';
+            err.style.display = 'block';
+            return;
+        }
+        const t = appDataRef.tickets.find(ti => ti.ticketId === ticket.ticketId);
+        if (t) t.username = targetUser;
+        saveDataCallbackRef();
+        removeModal(modal.overlay);
+        if (refreshCb) refreshCb();
+        createModal('完成', '<p>票券已成功轉移。</p>', [{ text: '確定', onClick: () => removeModal() }]);
+    };
+}
+

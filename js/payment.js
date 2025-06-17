@@ -128,21 +128,21 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
     const concertToUpdate = appDataRef.concerts.find(c => c.id === event.id);
     if (!concertToUpdate) {
         console.error("Concert not found for updating ticket sales.");
-        alert("發生錯誤，無法完成購買。請稍後再試。(C01)");
+        createModal('錯誤', '<p>發生錯誤，無法完成購買。請稍後再試。(C01)</p>', [{ text: '確定', onClick: () => removeModal() }]);
         removeModal(modal.overlay);
         return;
     }
-    const sessionToUpdate = concertToUpdate.sessions.find(s => s.id === session.id);
+    const sessionToUpdate = concertToUpdate.sessions.find(s => s.sessionId === session.sessionId);
     if (!sessionToUpdate) {
         console.error("Session not found for updating ticket sales.");
-        alert("發生錯誤，無法完成購買。請稍後再試。(S01)");
+        createModal('錯誤', '<p>發生錯誤，無法完成購買。請稍後再試。(S01)</p>', [{ text: '確定', onClick: () => removeModal() }]);
         removeModal(modal.overlay);
         return;
     }
     const sectionToUpdate = sessionToUpdate.sections.find(sec => sec.sectionId === selectedSection.sectionId);
     if (!sectionToUpdate) {
         console.error("Section not found for updating ticket sales.");
-        alert("發生錯誤，無法完成購買。請稍後再試。(SEC01)");
+        createModal('錯誤', '<p>發生錯誤，無法完成購買。請稍後再試。(SEC01)</p>', [{ text: '確定', onClick: () => removeModal() }]);
         removeModal(modal.overlay);
         return;
     }
@@ -167,7 +167,7 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
             id: `T${Date.now()}-${currentUser.username.slice(0,3)}-${i}-${Math.random().toString(36).substring(2,7)}`, // Enhanced uniqueness
             username: currentUser.username,
             concertId: event.id,
-            sessionId: session.id,
+            sessionId: session.sessionId,
             sectionId: selectedSection.sectionId,
             status: 'confirmed',
             purchaseTime: new Date().toISOString(),
@@ -184,6 +184,6 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
         onPurchaseSuccessCallbackRef(newlyCreatedTickets); // Pass the array of newly created tickets
     }
     
-    alert(`成功使用 ${paymentMethodDesc} 購買 ${event.title} - ${new Date(session.dateTime).toLocaleDateString()} (${selectedSection.name || selectedSection.sectionId}) ${quantity} 張票券！`);
-    removeModal(modal.overlay);
+    createModal('完成', `<p>成功使用 ${paymentMethodDesc} 購買 ${event.title} - ${new Date(session.dateTime).toLocaleDateString()} (${selectedSection.name || selectedSection.sectionId}) ${quantity} 張票券！</p>`, [{ text: '確定', onClick: () => removeModal() }]);
+    // modal overlay is replaced by the new modal, no need to remove here
 }

@@ -1,12 +1,12 @@
 :root {
-  --primary-color: #6A1B9A; /* 深紫羅蘭色 */
-  --secondary-color: #FF6F00; /* 鮮橙色 */
-  --accent-color: #1DE9B6; /* 青綠色 */
-  --background-color: #ECEFF1; /* 淺灰藍色 */
-  --text-color: #263238; /* 深灰藍色 */
-  --border-radius: 10px; /* 稍微增加圓角 */
-  --max-width: 960px; /* 稍微增加最大寬度 */
-  --info-color: #2196F3; /* 新增：資訊藍色 */
+  --primary-color: #1e88e5; /* 藍色 */
+  --secondary-color: #43a047; /* 綠色 */
+  --accent-color: #ffb300; /* 橘色 */
+  --background-color: #f5f5f5; /* 淺灰色 */
+  --text-color: #212529; /* 深灰 */
+  --border-radius: 8px;
+  --max-width: 960px;
+  --info-color: #03a9f4;
 }
 * {
   box-sizing: border-box;
@@ -125,12 +125,13 @@ h2 {
   flex-grow: 1;
 }
 .small-btn {
-  background: #e91e63;
+  background: var(--secondary-color);
   padding: 0.3rem 0.6rem;
   font-size: 0.9rem;
+  color: #fff;
 }
 .small-btn:hover {
-  background: #ad1457;
+  background: var(--primary-color);
 }
 .info {
   font-size: 0.9rem;
