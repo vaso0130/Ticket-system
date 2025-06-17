@@ -72,9 +72,9 @@ export let concerts = [
     sessions: [
       {
         sessionId: "1-1",
-        dateTime: "2025-07-15T19:00:00",
+        dateTime: "2025-06-19T19:00:00",
         salesStartDateTime: "2025-05-20T12:00:00",
-        salesEndDateTime: "2025-07-14T23:59:59",
+        salesEndDateTime: "2025-06-18T23:59:59",
         sections: [
           { sectionId: "VIP", price: 5800, ticketsAvailable: 100, ticketsSold: 0 },
           { sectionId: "A", price: 3800, ticketsAvailable: 500, ticketsSold: 0 },
@@ -327,5 +327,29 @@ export let tickets = [
       { row: 3, seat: 6, label: "3排6號" }
     ],
     totalPrice: 4300
+  },
+  {
+    ticketId: 8,
+    username: "super",
+    eventId: 1,
+    sessionId: "1-1",
+    sectionId: "C",
+    purchaseTime: "2025-06-15T12:00:00",
+    paymentMethod: "credit_card",
+    status: "confirmed",
+    seats: [ { type: "generalAdmission", description: "自由座" } ],
+    totalPrice: 1800
+  },
+  {
+    ticketId: 9,
+    username: "super",
+    eventId: 2,
+    sessionId: "2-1",
+    sectionId: "VIP",
+    purchaseTime: "2025-06-10T12:00:00",
+    paymentMethod: "credit_card",
+    status: "confirmed",
+    seats: [ { row: 1, seat: 1, label: "1排1號" } ],
+    totalPrice: 4800
   }
 ];

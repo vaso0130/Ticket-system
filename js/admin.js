@@ -171,7 +171,7 @@ function renderUserListAdmin(){
 function showViewUserModal(user) {
   if (!uiHelpers.createModal || !uiHelpers.removeModal) {
     console.error("Modal helpers not available in Admin module");
-    alert(`使用者名稱: ${user.username}\n姓名: ${user.name || 'N/A'}\nEmail: ${user.email || 'N/A'}\n身分組: ${user.roles.map(r => uiHelpers.roleNameDisplay(r)).join(', ')}`);
+    createModal('資訊', `<p>使用者名稱: ${user.username}<br>姓名: ${user.name || 'N/A'}<br>Email: ${user.email || 'N/A'}<br>身分組: ${user.roles.map(r => uiHelpers.roleNameDisplay(r)).join(', ')}</p>`, [{ text: '確定', onClick: () => removeModal() }]);
     return;
   }
   const viewModal = uiHelpers.createModal();
@@ -214,7 +214,7 @@ function showViewUserModal(user) {
               appData.users.splice(idx,1);
               renderUserListAdmin();
               uiHelpers.removeModal(viewModal.overlay); // Close view modal after successful deletion
-              alert(`使用者 ${user.username} 已成功刪除。`);
+              createModal('完成', `<p>使用者 ${user.username} 已成功刪除。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
             }
           }
         );
@@ -301,7 +301,7 @@ function showEditUserModal(user) { // Removed onSaveCallback for now, will integ
           editModal.overlay.style.animation = 'fadeOut 0.3s ease-out forwards';
           editModal.box.style.animation = 'fadeOutScaleDown 0.3s ease-out forwards';
           setTimeout(() => uiHelpers.removeModal(editModal.overlay), 300);
-          alert(`使用者 ${user.username} 的資料已更新。`);
+          createModal('完成', `<p>使用者 ${user.username} 的資料已更新。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
         } else {
           // This should ideally not happen if user object is consistent
           errorP.textContent = '找不到使用者資料，無法更新。';
@@ -321,7 +321,7 @@ function promptAdminPasswordForConfirmation(actionDescription, callbackOnSuccess
     // Simulate password check (always succeeds here)
     setTimeout(() => {
       callbackOnSuccess();
-      alert('操作成功。'); // Inform about success
+      createModal('完成', '<p>操作成功。</p>', [{ text: '確定', onClick: () => removeModal() }]);
     }, 300);
     return;
   }
@@ -356,7 +356,7 @@ function promptAdminPasswordForConfirmation(actionDescription, callbackOnSuccess
       passwordModal.overlay.style.animation = 'fadeOut 0.3s ease-out forwards';
       passwordModal.box.style.animation = 'fadeOutScaleDown 0.3s ease-out forwards';
       setTimeout(() => uiHelpers.removeModal(passwordModal.overlay), 300);
-      alert('操作成功。');
+      createModal('完成', '<p>操作成功。</p>', [{ text: '確定', onClick: () => removeModal() }]);
     } else {
       errorP.textContent = '密碼錯誤，請再試一次。';
       errorP.style.display = 'block';
