@@ -218,7 +218,8 @@ function renderMyTickets(containerElement) {
         return;
     }
     ul.innerHTML = '';
-    const myTickets = tickets.filter(t => t.username === currentUser.username);
+    // 自動過濾掉有問題的票券（如 concertId 為 undefined）
+    const myTickets = tickets.filter(t => t.username === currentUser.username && t.concertId !== undefined);
     if (myTickets.length === 0) {
         ul.innerHTML = '<li>目前尚無票券</li>';
         return;
@@ -231,7 +232,7 @@ function renderMyTickets(containerElement) {
             return;
         }
 
-        const session = concert.sessions.find(s => s.id === t.sessionId);
+        const session = concert.sessions.find(s => s.sessionId === t.sessionId);
         if (!session) {
             console.warn(`Ticket found for non-existent sessionId: ${t.sessionId} in concertId: ${t.concertId}`);
             return;
@@ -270,19 +271,22 @@ function renderMyTickets(containerElement) {
 
         // Determine how to display seat information
         let seatDisplay = '';
-        if (t.seats && t.seats.length > 0) {
-            // Check if the first element in seats is an object or a string/number
-            if (typeof t.seats[0] === 'object' && t.seats[0] !== null) {
-                // Assuming seats are objects like { row: 'A', seat: 1 }
-                // This case should ideally not happen for 'generalAdmission' if data is consistent
-                seatDisplay = t.seats.map(s => `${s.row || ''}${s.seat || ''}`).join(', '); 
-            } else {
-                // Seats are likely strings or numbers (e.g., ['A1', 'A2'] or ['自由入座'])
-                seatDisplay = t.seats.join(', ');
-            }
+        const isGeneralAdmission = venueSectionInfo && (venueSectionInfo.seatingType === 'generalAdmission' || venueSectionInfo.seatingType === 'general');
+        if (isGeneralAdmission) {
+            seatDisplay = '自由入座';
+        } else if (t.seats && t.seats.length > 0) {
+            // 對號入座格式：A~N排第幾號
+            seatDisplay = t.seats.map(s => {
+                if (typeof s === 'object' && s.row && s.seat) {
+                    return `${s.row}排${s.seat}號`;
+                } else if (typeof s === 'object' && s.label) {
+                    return s.label;
+                } else {
+                    return s.toString();
+                }
+            }).join(', ');
         }
         // For general admission, explicitly state it if no specific seats are listed or if it's marked as such
-        const isGeneralAdmission = venueSectionInfo && (venueSectionInfo.seatingType === 'generalAdmission' || venueSectionInfo.seatingType === 'general');
         if (isGeneralAdmission && (!t.seats || t.seats.length === 0)) {
             seatDisplay = '自由入座';
         } else if (isGeneralAdmission && t.seats && t.seats.length > 0 && seatDisplay.includes('[object Object]')) {
@@ -291,9 +295,11 @@ function renderMyTickets(containerElement) {
         }
 
 
+        // 票號顯示：場次ID+流水號（如 1-1-1001 或 2-1-1002）
+        const ticketNo = `${t.sessionId}-${t.ticketId || t.id || ''}`;
         li.innerHTML = `
         <div style="flex-grow:1;">
-          <strong>${concert.title}</strong> (票號: ${t.id})<br/>
+          <strong>${concert.title}</strong> (票號: ${ticketNo})<br/>
           場次: ${new Date(session.dateTime).toLocaleString()}<br/>
           場地: ${venueName} | 區域: ${sectionName}<br/>
           票價: NT$${pricePerTicket}
@@ -311,28 +317,7 @@ function renderMyTickets(containerElement) {
         const diffTime = sessionDate - now;
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
-        if (t.status === 'normal' || t.status === 'confirmed') {
-            const refundBtn = document.createElement('button');
-            refundBtn.className = 'small-btn refund-button';
-            refundBtn.textContent = '申請退票';
-
-            // 計算是否距離場次開始小於3天
-            const now = new Date();
-            const sessionDate = new Date(session.dateTime);
-            const diffTime = sessionDate - now;
-            const diffDays = diffTime / (1000 * 60 * 60 * 24);
-            if (diffDays < 3) {
-                refundBtn.disabled = true;
-                refundBtn.style.background = '#ccc';
-                refundBtn.style.color = '#888';
-                refundBtn.title = '演唱會開始前3天內不可退票';
-            } else {
-                refundBtn.onclick = () => handleShowRefundRequestModal(t, concert, session, () => renderMyTickets(containerElement));
-            }
-            actionsDiv.appendChild(refundBtn);
-        }
-
-        // 退票按鈕：永遠顯示，不能退時灰白且提示
+        // 退票按鈕：主辦方也可退票，且不限制角色
         const canRefund = (t.status === 'normal' || t.status === 'confirmed') && diffDays >= 3;
         const refundBtn = document.createElement('button');
         refundBtn.className = 'small-btn refund-button';
@@ -343,7 +328,7 @@ function renderMyTickets(containerElement) {
             refundBtn.title = '退票時間已過，請洽詢管理員';
             refundBtn.onclick = () => {
                 createModal('提示', `\
-                  <div style='padding:1rem 0;'>未開放，請洽詢管理員</div>\
+                  <div style='padding:1rem 0;'>退票時間已過，請恰管理員!</div>\
                   <div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>\
                 `);
                 setTimeout(() => {
@@ -357,18 +342,18 @@ function renderMyTickets(containerElement) {
         }
         actionsDiv.appendChild(refundBtn);
 
-        // 領票按鈕：永遠顯示，不能領時灰白且提示
-        const canClaim = (diffDays < 3 && (t.status === 'normal' || t.status === 'confirmed'));
+        // 領票按鈕：演唱會前3天內才可領票與產生QRcode
+        const canClaim = (diffDays < 3 && diffDays >= 0 && (t.status === 'normal' || t.status === 'confirmed'));
         const claimBtn = document.createElement('button');
         claimBtn.className = 'small-btn claim-ticket-btn';
         claimBtn.textContent = '領票';
         if (!canClaim) {
             claimBtn.style.background = '#ccc';
             claimBtn.style.color = '#888';
-            claimBtn.title = '未開放，請洽詢管理員';
+            claimBtn.title = '僅限演唱會前三天可領票';
             claimBtn.onclick = () => {
                 createModal('提示', `\
-                  <div style='padding:1rem 0;'>活動前三天開放領取，請洽詢管理員</div>\
+                  <div style='padding:1rem 0;'>僅限演唱會前三天可領票與取得 QR Code</div>\
                   <div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>\
                 `);
                 setTimeout(() => {

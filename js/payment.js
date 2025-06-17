@@ -1,5 +1,5 @@
 // Payment Module
-import { removeModal } from './ui.js'; // Assuming ui.js is in the same directory
+import { createModal, removeModal } from './ui.js'; // Assuming ui.js is in the same directory
 
 let appDataRef;
 let saveDataCallbackRef;
@@ -125,6 +125,10 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
     // Destructure all needed properties from paymentDetails, including the new seatingType
     const { event, session, selectedSection, quantity, seats: assignedSeats, seatingType } = paymentDetails;
 
+    if (!event || !event.id) {
+        console.error('Invalid event object in completePurchase:', event);
+    }
+
     const concertToUpdate = appDataRef.concerts.find(c => c.id === event.id);
     if (!concertToUpdate) {
         console.error("Concert not found for updating ticket sales.");
@@ -157,6 +161,14 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
         // For general, seats[i] will be like { type: 'generalAdmission', description: '自由座' }
         if (assignedSeats && assignedSeats[i]) {
             seatInfoForThisTicket = assignedSeats[i];
+            // 統一格式：若 row 為數字，轉成大寫英文字母
+            if (seatInfoForThisTicket.row && typeof seatInfoForThisTicket.row === 'number') {
+                seatInfoForThisTicket.row = String.fromCharCode(65 + seatInfoForThisTicket.row - 1); // 1=>A, 2=>B...
+            }
+            // 統一格式：補上 label
+            if (seatInfoForThisTicket.row && seatInfoForThisTicket.seat) {
+                seatInfoForThisTicket.label = `${seatInfoForThisTicket.row}排${seatInfoForThisTicket.seat}號`;
+            }
         } else {
             // Fallback if assignedSeats is not as expected, though ticketing.js should ensure it is.
             console.warn("Seat information missing for a ticket, falling back to general admission type.")

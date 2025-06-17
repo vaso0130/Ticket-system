@@ -199,8 +199,8 @@ function renderDashboard() {
 
   // Add event listener for the account settings button
   accountSettingsBtn.addEventListener('click', () => {
-    // Assuming renderAccountSettings is now exported from auth.js
-    auth.renderAccountSettings(); 
+    // 直接呼叫已引入的 authRenderAccountSettings
+    authRenderAccountSettings();
     logoutBtn.style.display = 'none';
     switchRoleBtn.style.display = 'none';
     accountSettingsBtn.style.display = 'none'; // Hide itself when on account settings page

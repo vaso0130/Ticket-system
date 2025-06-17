@@ -27,9 +27,9 @@ export let venues = [
     location: '台北市信義區',
     capacity: 15000, // This will be the total capacity, sum of section capacities
     seatMap: [
-      { id: 'A', name: 'A區', capacity: 5000, seatingType: 'numbered', rows: 50, seatsPerRow: 100 },
-      { id: 'B', name: 'B區', capacity: 5000, seatingType: 'numbered', rows: 50, seatsPerRow: 100 },
-      { id: 'C', name: 'C區', capacity: 4000, seatingType: 'generalAdmission' }, // For general admission, rows/seatsPerRow might not be applicable or needed for initial display
+      { id: 'A', name: 'A區', capacity: 5000, seatingType: 'generalAdmission' },
+      { id: 'B', name: 'B區', capacity: 5000, seatingType: 'generalAdmission' },
+      { id: 'C', name: 'C區', capacity: 4000, seatingType: 'generalAdmission' },
       { id: 'VIP', name: 'VIP區', capacity: 1000, seatingType: 'numbered', rows: 20, seatsPerRow: 50 }
     ]
   },
@@ -222,11 +222,56 @@ export let concerts = [
 // seats: [{ row, seat, label: '10排5號' }, { type: 'generalAdmission', description: '自由座' }]
 // quantity can be derived from seats.length
 export let tickets = [
+  // super 預設一張可退票（自由入座）
+  {
+    ticketId: 'T1750168286859-sup-0-t7pda',
+    username: "super",
+    concertId: 2,
+    sessionId: "2-1",
+    sectionId: "VIP",
+    purchaseTime: "2025-06-01T10:00:00",
+    paymentMethod: "credit_card",
+    status: "confirmed",
+    seats: [
+      { row: 'B', seat: 10, label: 'A排10號' }
+    ],
+    totalPrice: 4800
+  },
+  // super 預設一張可領票（自由入座）
+  {
+    ticketId: 'T1750168286860-sup-0-t7pdb',
+    username: "super",
+    concertId: 1,
+    sessionId: "1-1",
+    sectionId: "A",
+    purchaseTime: "2025-06-17T10:00:00",
+    paymentMethod: "credit_card",
+    status: "confirmed",
+    seats: [
+      { type: 'generalAdmission', description: '自由入座' }
+    ],
+    totalPrice: 3800
+  },
+  // super 預設一張對號入座票（VIP區）
+  {
+    ticketId: 'T1750168345240-sup-0-t7pdb',
+    username: "super",
+    concertId: 1,
+    sessionId: "1-1",
+    sectionId: "VIP",
+    purchaseTime: "2025-06-17T10:00:00",
+    paymentMethod: "credit_card",
+    status: "confirmed",
+    seats: [
+      { row: 'A', seat: 8, label: 'A排8號' }
+    ],
+    totalPrice: 5800
+  },
   // Example: user1 bought 2 tickets for concert 1, session 1-1, section A (numbered)
   {
     ticketId: 1,
     username: "user1",
-    eventId: 1,
+    concertId: 1,
     sessionId: "1-1",
     sectionId: "A",
     purchaseTime: "2025-06-21T10:00:00",
@@ -241,7 +286,7 @@ export let tickets = [
   {
     ticketId: 2,
     username: "user2",
-    eventId: 2,
+    concertId: 2,
     sessionId: "2-1",
     sectionId: "VIP",
     purchaseTime: "2025-07-02T11:30:00",
@@ -256,7 +301,7 @@ export let tickets = [
   {
     ticketId: 3,
     username: "user1",
-    eventId: 3,
+    concertId: 3,
     sessionId: "3-1",
     sectionId: "Rock",
     purchaseTime: "2025-07-11T09:15:00",
@@ -271,7 +316,7 @@ export let tickets = [
   {
     ticketId: 4,
     username: "user2",
-    eventId: 4,
+    concertId: 4,
     sessionId: "4-1",
     sectionId: "Zone1",
     purchaseTime: "2025-08-02T14:00:00",
@@ -282,74 +327,5 @@ export let tickets = [
       { row: 15, seat: 11, label: "15排11號" }
     ],
     totalPrice: 5600
-  },
-  {
-    ticketId: 5,
-    username: "user1",
-    eventId: 5,
-    sessionId: "5-1",
-    sectionId: "TBL",
-    purchaseTime: "2025-08-16T16:45:00",
-    paymentMethod: "credit_card",
-    status: "confirmed",
-    seats: [
-      { row: 5, seat: 5, label: "5排5號" },
-      { row: 5, seat: 6, label: "5排6號" }
-    ],
-    totalPrice: 3300
-  },
-  {
-    ticketId: 6,
-    username: "user2",
-    eventId: 6,
-    sessionId: "6-1",
-    sectionId: "VIP",
-    purchaseTime: "2025-09-02T10:30:00",
-    paymentMethod: "credit_card",
-    status: "confirmed",
-    seats: [
-      { row: 1, seat: 1, label: "1排1號" },
-      { row: 1, seat: 2, label: "1排2號" }
-    ],
-    totalPrice: 12400
-  },
-  {
-    ticketId: 7,
-    username: "user1",
-    eventId: 7,
-    sessionId: "7-1",
-    sectionId: "TBL",
-    purchaseTime: "2025-10-02T15:00:00",
-    paymentMethod: "credit_card",
-    status: "confirmed",
-    seats: [
-      { row: 3, seat: 5, label: "3排5號" },
-      { row: 3, seat: 6, label: "3排6號" }
-    ],
-    totalPrice: 4300
-  },
-  {
-    ticketId: 8,
-    username: "super",
-    eventId: 1,
-    sessionId: "1-1",
-    sectionId: "C",
-    purchaseTime: "2025-06-15T12:00:00",
-    paymentMethod: "credit_card",
-    status: "confirmed",
-    seats: [ { type: "generalAdmission", description: "自由座" } ],
-    totalPrice: 1800
-  },
-  {
-    ticketId: 9,
-    username: "super",
-    eventId: 2,
-    sessionId: "2-1",
-    sectionId: "VIP",
-    purchaseTime: "2025-06-10T12:00:00",
-    paymentMethod: "credit_card",
-    status: "confirmed",
-    seats: [ { row: 1, seat: 1, label: "1排1號" } ],
-    totalPrice: 4800
   }
 ];

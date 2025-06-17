@@ -149,18 +149,9 @@ export function renderAdminRefundReviewUI(containerElementId) {
 
             t.quantity -= t.refundRequest; // Reduce the number of tickets the user holds for this specific ticket entry
 
-            if (t.quantity <= 0) { // If all tickets for this entry are refunded
-                const idx = appDataRef.tickets.findIndex(ticket => 
-                    ticket.username === t.username && 
-                    ticket.concertId === t.concertId && 
-                    ticket.purchaseTime === t.purchaseTime && // Assuming purchaseTime helps identify unique ticket entries
-                    ticket.status === 'refund_pending' // Ensure we are removing the correct pending entry
-                );
-                if (idx !== -1) appDataRef.tickets.splice(idx, 1);
-            } else { // If some tickets remain for this entry
-                t.status = 'normal'; // Ticket status back to normal
-                delete t.refundRequest; // Clear the refund request quantity
-            }
+            // 審核通過後，標記為已退款（refunded），不直接移除
+            t.status = 'refunded';
+            delete t.refundRequest;
             saveDataCallbackRef();
             if (onRefundUpdateCallbackRef) onRefundUpdateCallbackRef('admin'); // Refresh admin UI
         };

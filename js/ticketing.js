@@ -122,14 +122,16 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
     function updateSeatingChoiceVisibility() {
         const choice = seatingChoiceSelect.value;
         const selectedSectionId = sectionSelect.value;
-        const selectedVenueSection = appDataRef.venues.find(v => v.id === event.venueId)?.seatMap.find(s => s.id === selectedSectionId);
+        // 取得正確的 section 設定（以 venue seatMap 為主）
+        const venue = appDataRef.venues.find(v => v.id === event.venueId);
+        const selectedVenueSection = venue ? venue.seatMap.find(s => s.id === selectedSectionId) : null;
 
-        if (selectedVenueSection && (selectedVenueSection.seatingType === 'generalAdmission' || selectedVenueSection.seatingType === 'general')) {
+        if (selectedVenueSection && selectedVenueSection.seatingType === 'generalAdmission') {
             seatingChoiceSelect.value = 'random'; // Force random for general admission
             seatingChoiceSelect.disabled = true;
             ticketQuantityContainer.style.display = 'block';
             manualSeatingContainer.style.display = 'none';
-        } else {
+        } else if (selectedVenueSection && selectedVenueSection.seatingType === 'numbered') {
             seatingChoiceSelect.disabled = false;
             if (choice === 'random') {
                 ticketQuantityContainer.style.display = 'block';
@@ -139,6 +141,12 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
                 manualSeatingContainer.style.display = 'block';
                 selectedSeatsInfoDiv.textContent = '尚未選擇座位';
             }
+        } else if (selectedVenueSection) {
+            // 不支援的型態
+            seatingChoiceSelect.disabled = true;
+            ticketQuantityContainer.style.display = 'none';
+            manualSeatingContainer.style.display = 'none';
+            createModal('錯誤', '<p>未知的區域座位型態，請聯絡管理員。</p>', [{ text: '確定', onClick: () => removeModal() }]);
         }
     }
 
@@ -259,16 +267,13 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
                     buyError.style.display = 'block';
                     return;
                 }
-
                 const ticketsCurrentlySoldInEventSection = concertEventSection.ticketsSold;
-                const maxCapacityForEventSection = concertEventSection.ticketsAvailable; // This is the total tickets for this section in this event session
-                
+                const maxCapacityForEventSection = concertEventSection.ticketsAvailable;
                 if (requestedQuantity > (maxCapacityForEventSection - ticketsCurrentlySoldInEventSection)){
                     buyError.textContent = `此區域隨機選位剩餘票數不足 (${maxCapacityForEventSection - ticketsCurrentlySoldInEventSection} 張)。`;
                     buyError.style.display = 'block';
                     return;
                 }
-
                 // Random seat assignment logic
                 const allPossibleSeats = [];
                 if (venueSectionLayout.rows && venueSectionLayout.seatsPerRow) {
@@ -312,12 +317,11 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
                     buyError.style.display = 'block';
                     return;
                 }
-                // This path is currently blocked for purchase
                 buyError.textContent = '自行選位功能尚在開發中，無法透過此方式完成購買。';
                 buyError.style.display = 'block';
                 return;
             }
-        } else if (venueSectionLayout.seatingType === 'general' || venueSectionLayout.seatingType === 'generalAdmission') {
+        } else if (venueSectionLayout.seatingType === 'generalAdmission') {
             requestedQuantity = parseInt(quantityInput.value);
             if (isNaN(requestedQuantity) || requestedQuantity < 1) {
                 buyError.textContent = '請輸入有效的購買數量。';
@@ -326,7 +330,7 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
             }
             const ticketsLeftInEventSection = concertEventSection.ticketsAvailable - concertEventSection.ticketsSold;
             if (requestedQuantity > ticketsLeftInEventSection) {
-                buyError.textContent = `此區域自由入座最多可購買 ${ticketsLeftInEventSection} 張票。`;
+                buyError.textContent = `此區域剩餘票數不足 (${ticketsLeftInEventSection} 張)。`;
                 buyError.style.display = 'block';
                 return;
             }
@@ -334,7 +338,7 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
                 assignedSeats.push({ type: 'generalAdmission', description: '自由座' });
             }
         } else {
-            buyError.textContent = '未知的區域座位類型，無法處理購票。';
+            buyError.textContent = '未知的區域座位型態，請聯絡管理員。';
             buyError.style.display = 'block';
             return;
         }
