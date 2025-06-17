@@ -1,5 +1,6 @@
 import { populateVenueOptions } from './ui.js';
 import { initEventManagementModule, renderOrganizerEventManagementUI } from './eventManagement.js'; // Import event management
+import { renderVerificationUI } from './verification.js';
 
 let mainContentRef;
 let appDataRef;
@@ -33,6 +34,7 @@ export function renderOrganizerDashboardUI() {
     <nav style="margin-bottom: 1rem;">
       <button id="orgTicketsBtn">票務管理</button>
       <button id="orgAccountingBtn">帳務管理</button>
+      <button id="orgVerifyBtn">票券驗證</button>
     </nav>
     <section id="organizerContent"></section>
     `;
@@ -40,12 +42,17 @@ export function renderOrganizerDashboardUI() {
 
     document.getElementById('orgTicketsBtn').onclick = () => {
         if (organizerContentElement) {
-            renderOrganizerEventManagementUI(organizerContentElement); 
+            renderOrganizerEventManagementUI(organizerContentElement);
         } else {
             console.error("Organizer content element not found for orgTicketsBtn");
         }
     };
     document.getElementById('orgAccountingBtn').onclick = () => renderOrgAccounting();
+    document.getElementById('orgVerifyBtn').onclick = () => {
+        if (organizerContentElement) {
+            renderVerificationUI(organizerContentElement);
+        }
+    };
 
     // Default show tickets (now handled by event management)
     if (organizerContentElement) {

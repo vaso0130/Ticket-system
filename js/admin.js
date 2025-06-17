@@ -2,6 +2,7 @@
 import { initVenueManagementModule, renderVenueManagementUI } from './venueManagement.js';
 import { initEventManagementModule, renderAdminEventManagementUI } from './eventManagement.js'; // Import event management
 import { renderAdminRefundReviewUI } from './refund.js'; // Import refund review UI
+import { renderVerificationUI } from './verification.js';
 
 let mainContentElement;
 let appData = {}; // { users, venues, concerts, tickets }
@@ -49,7 +50,8 @@ export function renderAdminDashboardUI(){
     <button id="adminVenuesBtn">場地管理</button>
     <button id="adminTicketsBtn">票務管理</button>
     <button id="adminRefundBtn">退票審核</button>
-    <button id="adminSalesReportBtn">銷售報表匯出</button> 
+    <button id="adminSalesReportBtn">銷售報表匯出</button>
+    <button id="adminVerifyBtn">票券驗證</button>
   </nav>
   <section id="adminContent">
   </section>
@@ -60,6 +62,7 @@ export function renderAdminDashboardUI(){
   document.getElementById('adminTicketsBtn').onclick = () => renderAdminEventManagementUI(mainContentElement, 'adminContent'); 
   document.getElementById('adminRefundBtn').onclick = () => renderAdminRefundReviewUI('adminContent'); // Use imported function
   document.getElementById('adminSalesReportBtn').onclick = () => renderAdminSalesReportUI('adminContent'); // New button
+  document.getElementById('adminVerifyBtn').onclick = () => renderVerificationUI(mainContentElement.querySelector('#adminContent'));
 
   // Default show users
   renderAdminUsers();
@@ -99,6 +102,7 @@ function renderAdminUsers(){
         <option value="admin">管理者</option>
         <option value="organizer">主辦方</option>
         <option value="spectator">觀眾</option>
+        <option value="staff">工作人員</option>
       </select>
       <p style="font-size:0.85rem; color:#666; margin-top:0.25rem;">(可多選，按 Ctrl/Cmd 多選身分組)</p>
       <button type="submit" style="margin-top:1rem;">新增使用者</button>
@@ -236,7 +240,7 @@ function showEditUserModal(user) { // Removed onSaveCallback for now, will integ
   }
   const editModal = uiHelpers.createModal();
   editModal.box.style.animation = 'fadeInScaleUp 0.3s ease-out forwards';
-  const roleOptions = ['admin', 'organizer', 'spectator'];
+  const roleOptions = ['admin', 'organizer', 'spectator', 'staff'];
   let rolesCheckboxes = roleOptions.map(role => `
     <label style="display:block; margin-bottom:0.5rem;">
       <input type="checkbox" name="roles" value="${role}" ${user.roles.includes(role) ? 'checked' : ''}>

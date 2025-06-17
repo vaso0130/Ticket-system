@@ -14,8 +14,9 @@ export let users = [
   {username: 'org2', password: 'org234', roles: ['organizer'], email: 'org2@example.com', name: 'Organizer Two'},
   {username: 'user1', password: 'user123', roles: ['spectator'], email: 'user1@example.com', name: 'User One'},
   {username: 'user2', password: 'user234', roles: ['spectator'], email: 'user2@example.com', name: 'User Two'},
+  {username: 'staff1', password: 'staff123', roles: ['staff'], email: 'staff1@example.com', name: 'Staff One'},
   {username: 'multiuser', password: 'multi123', roles: ['admin','organizer'], email: 'multi@example.com', name: 'Multi Role User'},
-  {username: 'super', password: 'super123', roles: ['admin', 'organizer', 'spectator'], email: 'super@example.com', name: 'Super User'}
+  {username: 'super', password: 'super123', roles: ['admin', 'organizer', 'spectator', 'staff'], email: 'super@example.com', name: 'Super User'}
 ];
 
 // Venues database: id, name, location, capacity, seatMap[]
