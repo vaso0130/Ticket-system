@@ -13,6 +13,37 @@ export function initEventManagementModule(data, ui, saveDataFn, getCurrentUserFn
     em_uiHelpers = ui;
     em_saveDataCallback = saveDataFn;
     em_getCurrentUserCallback = getCurrentUserFn;
+    // === 新增：補齊所有現有場次的預設票券 ===
+    if (!em_appData.tickets) em_appData.tickets = [];
+    em_appData.concerts.forEach(event => {
+        event.sessions.forEach(session => {
+            session.sections.forEach(section => {
+                // 計算目前已存在的預設票數
+                const existCount = em_appData.tickets.filter(t =>
+                    String(t.concertId) === String(event.id) &&
+                    String(t.sessionId) === String(session.sessionId) &&
+                    String(t.sectionId) === String(section.sectionId) &&
+                    t.status === 'normal' && !t.username
+                ).length;
+                // 需要補齊的數量
+                const need = section.ticketsAvailable - existCount;
+                for (let i = 0; i < need; i++) {
+                    em_appData.tickets.push({
+                        ticketId: `T${Date.now()}-${event.id}-${session.sessionId}-${section.sectionId}-${i}-${Math.random().toString(36).substr(2,5)}`,
+                        username: null,
+                        concertId: event.id,
+                        sessionId: session.sessionId,
+                        sectionId: section.sectionId,
+                        purchaseTime: null,
+                        paymentMethod: null,
+                        status: 'normal',
+                        seats: [],
+                        totalPrice: section.price
+                    });
+                }
+            });
+        });
+    });
 }
 
 // --- Admin-specific event management UI ---
@@ -349,6 +380,24 @@ function handleSaveSessionFromModal(rolePrefix, parentListContainer) {
         salesEndDateTime,
         sections: sectionsData
     });
+    // === 新增：自動產生預設票券 ===
+    if (!em_appData.tickets) em_appData.tickets = [];
+    sectionsData.forEach(section => {
+        for (let i = 0; i < section.ticketsAvailable; i++) {
+            em_appData.tickets.push({
+                ticketId: `T${Date.now()}-${eventId}-${sessionId}-${section.sectionId}-${i}-${Math.random().toString(36).substr(2,5)}`,
+                username: null, // 尚未分配
+                concertId: eventId,
+                sessionId: sessionId,
+                sectionId: section.sectionId,
+                purchaseTime: null,
+                paymentMethod: null,
+                status: 'normal',
+                seats: [],
+                totalPrice: section.price
+            });
+        }
+    });
     em_saveDataCallback();
     msg.textContent = '場次新增成功！';
     msg.style.display = 'block';
@@ -393,22 +442,29 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
             eventImageHtml = `<img src=\"${event.imageUrl}\" alt=\"${event.title}\" style=\"max-width: 200px; max-height: 150px; object-fit: cover; margin-bottom: 10px; border-radius: 4px;\">`;
         }
 
-        let sessionsHtml = '<ul class=\"sessions-list\">';
+        let sessionsHtml = '<ul class="sessions-list">';
         if (event.sessions && event.sessions.length > 0) {
             event.sessions.forEach(session => {
-                let sectionsDetailHtml = '<ul style=\"padding-left: 20px; font-size: 0.9em;\">';
+                let sectionsDetailHtml = '<ul style="padding-left: 20px; font-size: 0.9em;">';
                 if (session.sections && session.sections.length > 0) {
                     session.sections.forEach(sect => {
                         const venueSection = venue ? venue.seatMap.find(s => s.id === sect.sectionId) : null;
                         const sectionName = venueSection ? venueSection.name : sect.sectionId;
-                        // 修正：票數計算納入所有狀態的票（含預設票）
-                        const allTickets = em_appData.tickets.filter(t =>
+                        // 修正：票數計算納入所有狀態的票（含預設票、已購票、公關票）
+                        // 售票數只計算有有效 username（非空字串）或 paymentMethod 為 pr（公關票）的票
+                        const soldTickets = (em_appData.tickets || []).filter(t =>
                             String(t.concertId) === String(event.id) &&
                             String(t.sessionId) === String(session.sessionId) &&
                             String(t.sectionId) === String(sect.sectionId) &&
-                            (t.status === 'confirmed' || t.status === 'used' || t.paymentMethod === 'pr' || t.status === 'normal' || t.status === 'pending')
+                            ((typeof t.username === 'string' && t.username.trim() !== '') || t.paymentMethod === 'pr')
                         );
-                        const soldCount = allTickets.length;
+                        console.log('DEBUG 售票統計', {
+                            eventId: event.id,
+                            sessionId: session.sessionId,
+                            sectionId: sect.sectionId,
+                            soldTickets
+                        });
+                        const soldCount = soldTickets.length;
                         sectionsDetailHtml += `<li><strong>${sectionName}:</strong> NT$${sect.price} | 售票: ${soldCount}/${sect.ticketsAvailable}</li>`;
                     });
                 } else {
@@ -686,281 +742,23 @@ function handleSaveEventChangesFromModal(rolePrefix, parentListContainer) {
     }, 1500);
 }
 
-
-// --- Admin-specific event management UI ---
-// 2. renderAdminEventManagementUI: Added parentElement parameter.
-// REMOVING DUPLICATE DEFINITION
-/*
-export function renderAdminEventManagementUI(parentElement, targetContainerId = 'adminContent') {
-    const container = parentElement.querySelector(`#${targetContainerId}`);
-    if (!container) {
-        console.error("Target container for event management not found in parentElement:", targetContainerId, parentElement);
-        parentElement.innerHTML = `<p>錯誤: 票務管理介面容器 #${targetContainerId} 找不到。</p>`;
-        return;
-    }
-    container.innerHTML = `
-    <h3>活動票務管理 (管理員)</h3>
-    <div id="eventListAdmin"></div>
-    <form id="addEventFormAdmin" style="margin-top:1rem; max-width:500px;">
-      <h4>新增主活動</h4>
-      <label for="eventTitleAdmin">主活動標題</label>
-      <input type="text" id="eventTitleAdmin" required />
-      <label for="eventVenueAdmin">場地</label>
-      <select id="eventVenueAdmin" required></select>
-      <label for="eventImageUrlAdmin">主活動圖片 URL</label>
-      <input type="url" id="eventImageUrlAdmin" placeholder="https://example.com/image.jpg" />
-      <button type="submit" style="margin-top:1rem;">建立主活動</button>
-      <p id="addEventMsgAdmin" class="success" style="display:none;"></p>
-      <p id="addEventErrorAdmin" class="error" style="display:none;"></p>
-    </form>
-    <!-- Removed static session form container -->
-  `;
-    em_uiHelpers.populateVenueOptions(container.querySelector('#eventVenueAdmin'), em_appData.venues);
-    // 3. renderEventListInternal: Pass 'container' as the search scope.
-    // Dependencies are passed explicitly for clarity or if they were not module-scoped.
-    renderEventListInternal(container, 'eventListAdmin', true);
-
-    const addEventFormAdmin = container.querySelector('#addEventFormAdmin');
-    if (addEventFormAdmin) {
-        addEventFormAdmin.addEventListener('submit', e => {
-            e.preventDefault();
-            const title = container.querySelector('#eventTitleAdmin').value.trim();
-            const venueId = parseInt(container.querySelector('#eventVenueAdmin').value);
-            const imageUrl = container.querySelector('#eventImageUrlAdmin').value.trim();
-            const msg = container.querySelector('#addEventMsgAdmin');
-            const err = container.querySelector('#addEventErrorAdmin');
-            msg.style.display = 'none';
-            err.style.display = 'none';
-
-            if (!title || !venueId) {
-                err.textContent = '主活動標題和場地為必填欄位';
-                err.style.display = 'block';
-                return;
-            }
-            const venue = em_appData.venues.find(v => v.id === venueId);
-            if (!venue) {
-                err.textContent = '選擇的場地不存在';
-                err.style.display = 'block';
-                return;
-            }
-            
-            let organizerId = 'admin_created'; 
-            const currentUser = em_getCurrentUserCallback ? em_getCurrentUserCallback() : null;
-            if (currentUser) {
-                organizerId = currentUser.username;
-            }
-
-            const id = em_appData.concerts.length ? Math.max(...em_appData.concerts.map(c => c.id)) + 1 : 1;
-            const newEvent = { id, title, venueId, organizerId, imageUrl: imageUrl || null, sessions: [] };
-            em_appData.concerts.push(newEvent);
-            em_saveDataCallback();
-            msg.textContent = '主活動建立成功！現在可以為此活動新增場次。';
-            msg.style.display = 'block';
-            addEventFormAdmin.reset();
-            renderEventListInternal(container, 'eventListAdmin', true);
-            // Pass 'container' to showAddSessionFormAsModal for list refresh context
-            showAddSessionFormAsModal(newEvent, 'Admin', container);
-        });
-    }
+// === 共用票券統計函式 ===
+/**
+ * 計算某區已分配/已購票/公關票的張數
+ */
+export function getSectionSoldCount(concertId, sessionId, sectionId, tickets) {
+    return (tickets || []).filter(t =>
+        String(t.concertId) === String(concertId) &&
+        String(t.sessionId) === String(sessionId) &&
+        String(t.sectionId) === String(sectionId) &&
+        ((typeof t.username === 'string' && t.username.trim() !== '') || t.paymentMethod === 'pr')
+    ).length;
 }
-*/
-
-// Function to show modal for editing a session
-// showEditSessionFormAsModal: Added parentListContainer for list refresh context
-function showEditSessionFormAsModal(event, session, rolePrefix, parentListContainer) {
-    const modalTitle = `編輯場次於 \"${event.title}\"`;
-    const venue = em_appData.venues.find(v => v.id === event.venueId);
-
-    if (!venue || !venue.seatMap) {
-        console.error('Venue or seat map not found for event:', event);
-        em_uiHelpers.createModal('錯誤', '<p>找不到場地資訊或座位區域設定，無法編輯場次。</p>', [{ text: '關閉', onClick: () => em_uiHelpers.removeModal() }]);
-        return;
-    }
-
-    let sectionsHtml = '';
-    venue.seatMap.forEach(venueSection => {
-        const existingSectionData = session.sections.find(s => s.sectionId === venueSection.id);
-        const price = existingSectionData ? existingSectionData.price : 0;
-        const ticketsAvailable = existingSectionData ? existingSectionData.ticketsAvailable : 0;
-        // ticketsSold is not directly editable here but shown for info if needed, or used in validation
-
-        sectionsHtml += `
-        <fieldset style="margin-bottom: 10px; border: 1px solid #ccc; padding: 10px;">
-            <legend>${venueSection.name} (場地容量: ${venueSection.capacity})</legend>
-            <input type="hidden" class="edit-session-section-id" value="${venueSection.id}">
-            <input type="hidden" class="edit-session-section-original-capacity" value="${venueSection.capacity}">
-            <div>
-                <label for="editModalSessionPrice_${venueSection.id}">票價 (NT$)</label>
-                <input type="number" id="editModalSessionPrice_${venueSection.id}" class="edit-session-section-price" value="${price}" min="0" required />
-            </div>
-            <div>
-                <label for="editModalSessionTickets_${venueSection.id}">可售票數量 (已售: ${existingSectionData ? existingSectionData.ticketsSold : 0})</label>
-                <input type="number" id="editModalSessionTickets_${venueSection.id}" class="edit-session-section-tickets" value="${ticketsAvailable}" min="0" max="${venueSection.capacity}" required />
-            </div>
-        </fieldset>
-        `;
-    });
-    
-    const formHtml = `
-        <input type=\"hidden\" id=\"modalEditSelectedEventId\" value=\"${event.id}\">
-        <input type=\"hidden\" id=\"modalEditSelectedSessionId\" value=\"${session.sessionId}\">
-        <input type=\"hidden\" id=\"modalEditSelectedEventVenueId\" value=\"${event.venueId}\">
-        <div>
-            <label for=\"modalEditSessionDateTime\">場次日期與時間</label>
-            <input type=\"datetime-local\" id=\"modalEditSessionDateTime\" value=\"${session.dateTime ? new Date(session.dateTime).toISOString().substring(0, 16) : ''}\" required />
-        </div>
-        <h5 style=\"margin-top:1rem; margin-bottom:0.5rem;\">各區域票價與票數設定:</h5>
-        ${sectionsHtml}
-        <div>
-            <label for="editModalSessionSalesStart">售票開始時間</label>
-            <input type="datetime-local" id="editModalSessionSalesStart" value="${session.salesStartDateTime.substring(0,16)}" required />
-        </div>
-        <div>
-            <label for="editModalSessionSalesEnd">售票結束時間</label>
-            <input type="datetime-local" id="editModalSessionSalesEnd" value="${session.salesEndDateTime.substring(0,16)}" required />
-        </div>
-        <p id="modalEditSessionMsg" class="success" style="display:none; margin-top: 10px;"></p>
-        <p id="modalEditSessionError" class="error" style="display:none; margin-top: 10px;"></p>
-    `;
-
-    const modalButtons = [
-        {
-            text: '儲存變更',
-            className: 'btn-primary',
-            onClick: () => {
-                // Pass parentListContainer to handleSaveEditedSessionFromModal
-                handleSaveEditedSessionFromModal(rolePrefix, parentListContainer);
-            }
-        },
-        {
-            text: '取消',
-            className: 'btn-secondary',
-            onClick: () => em_uiHelpers.removeModal()
-        }
-    ];
-    em_uiHelpers.createModal(modalTitle, formHtml, modalButtons);
-    // Clear previous values if any (though pre-filling is done above)
-    document.getElementById('modalEditSessionMsg').style.display = 'none';
-    document.getElementById('modalEditSessionError').style.display = 'none';
+/**
+ * 計算某區剩餘可售票數
+ */
+export function getSectionAvailableCount(concertId, sessionId, sectionId, tickets, ticketsAvailable) {
+    const sold = getSectionSoldCount(concertId, sessionId, sectionId, tickets);
+    return Math.max(0, ticketsAvailable - sold);
 }
 
-// handleSaveEditedSessionFromModal: Added 'parentListContainer' for list refresh context
-function handleSaveEditedSessionFromModal(rolePrefix, parentListContainer) {
-    const eventId = parseInt(document.getElementById('modalEditSelectedEventId').value);
-    const sessionId = document.getElementById('modalEditSelectedSessionId').value;
-    const venueId = parseInt(document.getElementById('modalEditSelectedEventVenueId').value); // Not strictly needed if eventId and sessionId are enough
-    
-    const dateTime = document.getElementById('modalEditSessionDateTime').value;
-    const salesStartDateTime = document.getElementById('modalEditSessionSalesStart').value;
-    const salesEndDateTime = document.getElementById('modalEditSessionSalesEnd').value;
-
-    const msg = document.getElementById('modalEditSessionMsg');
-    const err = document.getElementById('modalEditSessionError');
-    msg.style.display = 'none';
-    err.style.display = 'none';
-
-    const event = em_appData.concerts.find(c => c.id === eventId);
-    if (!event) { err.textContent = '找不到對應的主活動'; err.style.display = 'block'; return; }
-    
-    const sessionToUpdate = event.sessions.find(s => s.sessionId === sessionId);
-    if (!sessionToUpdate) { err.textContent = '找不到要更新的場次'; err.style.display = 'block'; return; }
-
-    const venue = em_appData.venues.find(v => v.id === event.venueId); // Use event.venueId
-    if (!venue || !venue.seatMap) { err.textContent = '找不到場地資訊或座位區域設定'; err.style.display = 'block'; return; }
-
-    // Validate general date/time fields first
-    if (!dateTime || !salesStartDateTime || !salesEndDateTime) {
-        err.textContent = '場次時間、售票開始/結束時間為必填';
-        err.style.display = 'block';
-        return;
-    }
-    if (new Date(salesEndDateTime) <= new Date(salesStartDateTime)) {
-        err.textContent = '售票結束時間必須晚於開始時間';
-        err.style.display = 'block';
-        return;
-    }
-    if (new Date(dateTime) <= new Date(salesEndDateTime)) {
-        err.textContent = '活動時間必須晚於售票結束時間';
-        err.style.display = 'block';
-        return;
-    }
-     if (new Date(dateTime) <= new Date(salesStartDateTime)) {
-        err.textContent = '活動時間必須晚於售票開始時間';
-        err.style.display = 'block';
-        return;
-    }
-
-    const updatedSectionsData = [];
-    let sectionInputError = false;
-
-    const sectionNodes = document.querySelectorAll('.edit-session-section-id');
-    sectionNodes.forEach(node => {
-        const sectionId = node.value;
-        const priceEl = document.getElementById(`editModalSessionPrice_${sectionId}`);
-        const ticketsEl = document.getElementById(`editModalSessionTickets_${sectionId}`);
-        const venueSectionCapacity = parseInt(node.parentElement.querySelector('.edit-session-section-original-capacity').value); // Get original capacity
-
-        if (!priceEl || !ticketsEl) {
-            console.error(`Price or tickets element not found for section ${sectionId} in edit form`);
-            sectionInputError = true; return;
-        }
-
-        const price = parseInt(priceEl.value);
-        const ticketsAvailable = parseInt(ticketsEl.value);
-        
-        const venueSection = venue.seatMap.find(s => s.id === sectionId); // For name
-        const sectionName = venueSection ? venueSection.name : sectionId;
-
-        if (isNaN(price) || price < 0 || isNaN(ticketsAvailable) || ticketsAvailable < 0) {
-            err.textContent = `區域 "${sectionName}" 的票價和票數必須是有效的非負數字。`;
-            sectionInputError = true; return;
-        }
-
-        // Find original ticketsSold for this section to validate new ticketsAvailable
-        const originalSectionData = sessionToUpdate.sections.find(s => s.sectionId === sectionId);
-        const ticketsSold = originalSectionData ? originalSectionData.ticketsSold : 0;
-
-        if (ticketsAvailable < ticketsSold) {
-            err.textContent = `區域 "${sectionName}" 的可售票數 (${ticketsAvailable}) 不可少於已售票數 (${ticketsSold})。`;
-            sectionInputError = true; return;
-        }
-        if (ticketsAvailable > venueSectionCapacity) { // Check against venue section's defined capacity
-            err.textContent = `區域 "${sectionName}" 的可售票數 (${ticketsAvailable}) 不可超過該區域在場地圖中定義的容量 (${venueSectionCapacity})。`;
-            sectionInputError = true; return;
-        }
-        
-        updatedSectionsData.push({
-            sectionId,
-            price,
-            ticketsAvailable,
-            ticketsSold // Keep original ticketsSold
-        });
-    });
-
-    if (sectionInputError) { err.style.display = 'block'; return; }
-
-    // Ensure all sections from venue.seatMap are covered
-    if (updatedSectionsData.length !== venue.seatMap.length) {
-         let missingSections = venue.seatMap.filter(vs => !updatedSectionsData.find(us => us.sectionId === vs.id));
-         err.textContent = `未能讀取所有場地區域的票務資訊。缺少的區域: ${missingSections.map(s=>s.name).join(', ')}。請檢查表單。`;
-         err.style.display = 'block';
-         return;
-    }
-
-
-    // Update session details
-    sessionToUpdate.dateTime = dateTime;
-    sessionToUpdate.salesStartDateTime = salesStartDateTime;
-    sessionToUpdate.salesEndDateTime = salesEndDateTime;
-    sessionToUpdate.sections = updatedSectionsData;
-
-    em_saveDataCallback();
-    msg.textContent = '場次更新成功！';
-    msg.style.display = 'block';
-
-    setTimeout(() => {
-        em_uiHelpers.removeModal();
-        // Use parentListContainer for refreshing the list
-        renderEventListInternal(parentListContainer, rolePrefix === 'Admin' ? 'eventListAdmin' : 'eventListOrg', rolePrefix === 'Admin');
-    }, 1500);
-}
