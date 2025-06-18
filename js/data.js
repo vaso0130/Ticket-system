@@ -255,7 +255,7 @@ export let tickets = [
   },
   // super 預設一張對號入座票（VIP區）
   {
-    ticketId: 'T1750168345240-sup-0-t7pdb',
+    ticketId: 'T1750168345240-sup-0-t7pdc',
     username: "super",
     concertId: 1,
     sessionId: "1-1",
@@ -270,7 +270,7 @@ export let tickets = [
   },
   // Example: user1 bought 2 tickets for concert 1, session 1-1, section A (numbered)
   {
-    ticketId: 1,
+    ticketId: 'T1750169000001-user1-0-t7pdd',
     username: "user1",
     concertId: 1,
     sessionId: "1-1",
@@ -285,7 +285,7 @@ export let tickets = [
     totalPrice: 7600
   },
   {
-    ticketId: 2,
+    ticketId: 'T1750169000002-user2-0-t7pde',
     username: "user2",
     concertId: 2,
     sessionId: "2-1",
@@ -300,7 +300,7 @@ export let tickets = [
     totalPrice: 9600
   },
   {
-    ticketId: 3,
+    ticketId: 'T1750169000003-user1-0-t7pdf',
     username: "user1",
     concertId: 3,
     sessionId: "3-1",
@@ -315,7 +315,7 @@ export let tickets = [
     totalPrice: 11000
   },
   {
-    ticketId: 4,
+    ticketId: 'T1750169000004-user2-0-t7pdg',
     username: "user2",
     concertId: 4,
     sessionId: "4-1",
