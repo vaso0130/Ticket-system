@@ -319,14 +319,19 @@ function showEditUserModal(user) { // Removed onSaveCallback for now, will integ
 function promptAdminPasswordForConfirmation(actionDescription, callbackOnSuccess) {
   if (!uiHelpers.createModal || !uiHelpers.removeModal) {
     console.error("Modal helpers not available for password prompt.");
-    // Fallback if modals are not available, though unlikely if other modals work
     const password = prompt(`請輸入您的管理員密碼以 ${actionDescription}:`);
-    if (password === null) return; // User canceled
-    // Simulate password check (always succeeds here)
-    setTimeout(() => {
-      callbackOnSuccess();
-      createModal('完成', '<p>操作成功。</p>', [{ text: '確定', onClick: () => removeModal() }]);
-    }, 300);
+    if (password === null) return;
+    // 取得目前登入管理員
+    const currentUser = getCurrentUserCallback && getCurrentUserCallback();
+    const userObj = appData.users.find(u => u.username === (currentUser && currentUser.username));
+    if (userObj && password === userObj.password) {
+      setTimeout(() => {
+        callbackOnSuccess();
+        createModal('完成', '<p>操作成功。</p>', [{ text: '確定', onClick: () => removeModal() }]);
+      }, 300);
+    } else {
+      alert('密碼錯誤，請再試一次。');
+    }
     return;
   }
   const passwordModal = uiHelpers.createModal();
@@ -353,9 +358,10 @@ function promptAdminPasswordForConfirmation(actionDescription, callbackOnSuccess
     const password = document.getElementById('adminPasswordInput').value;
     const errorP = document.getElementById('adminPasswordError');
     errorP.style.display = 'none';
-
-    // Simulate password check (replace with real check)
-    if (password === 'admin') {
+    // 取得目前登入管理員
+    const currentUser = getCurrentUserCallback && getCurrentUserCallback();
+    const userObj = appData.users.find(u => u.username === (currentUser && currentUser.username));
+    if (userObj && password === userObj.password) {
       callbackOnSuccess();
       passwordModal.overlay.style.animation = 'fadeOut 0.3s ease-out forwards';
       passwordModal.box.style.animation = 'fadeOutScaleDown 0.3s ease-out forwards';
