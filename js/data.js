@@ -87,7 +87,7 @@ export let concerts = [
   },
   {
     id: 2,
-    title: "日本偶像團體：愛●魔法少女☆⌒(*＾-゜)v",
+    title: "愛●魔法少女☆⌒(*＾-゜)v",
     description: "日本超人氣偶像團體首次來台！感受卡哇伊的魔法力量。",
     imageUrl: "./media/image/J-pop.png",
     category: "J-POP",
@@ -109,7 +109,7 @@ export let concerts = [
   },
   {
     id: 3,
-    title: "韓國女團:No different",
+    title: "No different",
     description: "韓國頂尖女團 No Different 降臨！帶來勁歌熱舞。",
     imageUrl: "./media/image/K-pop.png",
     category: "K-POP",
@@ -131,7 +131,7 @@ export let concerts = [
   },
   {
     id: 4,
-    title: "歐美搖滾樂隊：R0CK N0W",
+    title: "R0CK N0W",
     description: "歐美傳奇搖滾樂隊 R0CK N0W 強勢回歸！",
     imageUrl: "./media/image/rock.png",
     category: "搖滾",
@@ -174,7 +174,7 @@ export let concerts = [
   },
   {
     id: 6,
-    title: "台灣男子天團：亂78糟",
+    title: "亂78糟",
     description: "台灣男子天團『亂78糟』感動回歸！用音樂串起共同的青春記憶。",
     imageUrl: "./media/image/T-pop.png",
     category: "華語流行",
