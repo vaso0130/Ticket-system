@@ -233,7 +233,7 @@ function renderMyTickets(containerElement) {
     const sortSelect = containerElement.querySelector('#ticketSortSelect');
     const sortOrderBtn = containerElement.querySelector('#ticketSortOrderBtn');
     const hideUsedRefunded = containerElement.querySelector('#hideUsedRefunded');
-    let sortOrder = 'desc'; // 預設降序
+    let sortOrder = 'asc'; // 預設升序
 
     function renderList() {
       ul.innerHTML = '';
@@ -314,6 +314,11 @@ function renderMyTickets(containerElement) {
           ${statusDisplay}
         </div>
       `;
+        // 狀態為退票中/已退票/已使用時，不顯示任何按鈕與 actionsDiv
+        if (t.status === 'refund_pending' || t.status === 'refunded' || t.status === 'used') {
+          ul.appendChild(li);
+          return;
+        }
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'ticket-actions';
         const now = new Date();
@@ -342,7 +347,7 @@ function renderMyTickets(containerElement) {
             refundBtn.style.color = '#888';
             refundBtn.title = '退票時間已過，請洽詢管理員';
             refundBtn.onclick = () => {
-                createModal('提示', `<div style='padding:1rem 0;'>退票時間已過，請恰管理員!</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
+                createModal('提示', `<div style='padding:1rem 0;'>退票時間已過，請洽詢管理員!</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
                 setTimeout(() => {
                   document.getElementById('modal-ok').onclick = () => {
                     import('./ui.js').then(mod => mod.removeModal());
@@ -446,6 +451,8 @@ function renderMyTickets(containerElement) {
     };
     // 初始化箭頭
     sortOrderBtn.textContent = sortOrder === 'asc' ? '▲' : '▼';
+    // 預設選擇 eventTime
+    sortSelect.value = 'eventTime';
     renderList();
 }
 
