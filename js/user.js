@@ -15,7 +15,7 @@ export function initUserModule(mainContentElement, data, saveDataFunc, getCurren
     getCurrentUserCallbackRef = getCurrentUserFunc;
 }
 
-export function renderSpectatorDashboardUI() {
+export function renderSpectatorDashboardUI(defaultTab = 'concerts') {
     if (!mainContentRef || !appDataRef || !saveDataCallbackRef || !getCurrentUserCallbackRef) {
         console.error("User module not initialized correctly.");
         mainContentRef.innerHTML = "<p>使用者模組載入失敗，請稍後再試。</p>";
@@ -57,7 +57,11 @@ export function renderSpectatorDashboardUI() {
 
     // Default view
     if (spectatorContentElement) {
-        renderConcertsForSpectator(spectatorContentElement); // Default to showing concerts
+        if (defaultTab === 'myTickets') {
+            renderMyTickets(spectatorContentElement);
+        } else {
+            renderConcertsForSpectator(spectatorContentElement);
+        }
     } else {
          console.error("Spectator content element not found for default render");
     }
@@ -208,74 +212,77 @@ function renderConcertSessions(sessionsContainer, concert, now) {
 function renderMyTickets(containerElement) {
     const { venues, concerts, tickets } = appDataRef;
     const currentUser = getCurrentUserCallbackRef();
-    // const ul = mainContentRef.querySelector('#myTicketsList'); // Old way
-    containerElement.innerHTML = '<ul class="tickets-list" id="myTicketsList"></ul>';
+    // 排序與隱藏選項全部壓成一行，label 文字不換行
+    containerElement.innerHTML = `
+      <div style="margin-bottom:1rem;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:0.5rem;white-space:nowrap;">
+          <label style="margin:0;white-space:nowrap;">排序：</label>
+          <select id="ticketSortSelect" style="height:2em;">
+            <option value="purchaseTime">依購買時間</option>
+            <option value="eventTime">依演唱會時間</option>
+          </select>
+          <button id="ticketSortOrderBtn" title="切換排序方向" style="font-size:1.2em;padding:0 0.5em;cursor:pointer;line-height:1.5;background:#009688;color:#fff;border-radius:4px;border:none;transition:background 0.2s;">▼</button>
+        </div>
+        <label style="display:flex;align-items:center;user-select:none;cursor:pointer;margin:0;gap:0.5em;white-space:nowrap;">
+          <span>隱藏已使用/已退款</span><input type="checkbox" id="hideUsedRefunded" style="margin-left:0.5em;transform:scale(1.2);">
+        </label>
+      </div>
+      <ul class="tickets-list" id="myTicketsList"></ul>
+    `;
     const ul = containerElement.querySelector('#myTicketsList');
+    const sortSelect = containerElement.querySelector('#ticketSortSelect');
+    const sortOrderBtn = containerElement.querySelector('#ticketSortOrderBtn');
+    const hideUsedRefunded = containerElement.querySelector('#hideUsedRefunded');
+    let sortOrder = 'desc'; // 預設降序
 
-    if (!ul) {
-        console.error("My tickets list container not found in provided element");
-        containerElement.innerHTML = '<p>我的票券列表載入失敗。</p>';
-        return;
-    }
-    ul.innerHTML = '';
-    // 自動過濾掉有問題的票券（如 concertId 為 undefined）
-    const myTickets = tickets.filter(t => t.username === currentUser.username && t.concertId !== undefined);
-    if (myTickets.length === 0) {
+    function renderList() {
+      ul.innerHTML = '';
+      let myTickets = tickets.filter(t => t.username === currentUser.username && t.concertId !== undefined);
+      if (hideUsedRefunded.checked) {
+        myTickets = myTickets.filter(t => t.status !== 'used' && t.status !== 'refunded');
+      }
+      // 排序
+      const order = sortOrder === 'asc' ? 1 : -1;
+      if (sortSelect.value === 'purchaseTime') {
+        myTickets.sort((a, b) => (new Date(a.purchaseTime) - new Date(b.purchaseTime)) * order);
+      } else if (sortSelect.value === 'eventTime') {
+        myTickets.sort((a, b) => {
+          const ca = concerts.find(c => c.id === a.concertId);
+          const cb = concerts.find(c => c.id === b.concertId);
+          const sa = ca && ca.sessions.find(s => s.sessionId === a.sessionId);
+          const sb = cb && cb.sessions.find(s => s.sessionId === b.sessionId);
+          return (new Date((sa && sa.dateTime) || 0) - new Date((sb && sb.dateTime) || 0)) * order;
+        });
+      }
+      if (myTickets.length === 0) {
         ul.innerHTML = '<li>目前尚無票券</li>';
         return;
-    }
-
-    myTickets.forEach(t => { // t now represents a single ticket (quantity is 1)
+      }
+      myTickets.forEach(t => {
         const concert = concerts.find(c => c.id === t.concertId);
-        if (!concert) {
-            console.warn(`Ticket found for non-existent concertId: ${t.concertId}`);
-            return;
-        }
-
+        if (!concert) return;
         const session = concert.sessions.find(s => s.sessionId === t.sessionId);
-        if (!session) {
-            console.warn(`Ticket found for non-existent sessionId: ${t.sessionId} in concertId: ${t.concertId}`);
-            return;
-        }
-
-        // Debug: 印出票券狀態與場次時間
-        console.log('票券debug', {
-            id: t.id,
-            status: t.status,
-            sessionDateTime: session.dateTime
-        });
-
+        if (!session) return;
         const venue = venues.find(v => v.id === concert.venueId);
         const venueName = venue ? venue.name : '未知場地';
-
         const sectionData = session.sections.find(sec => sec.sectionId === t.sectionId);
         const venueSectionInfo = venue && venue.seatMap ? venue.seatMap.find(vs => vs.id === t.sectionId) : null;
         const sectionName = venueSectionInfo ? venueSectionInfo.name : (sectionData ? sectionData.name : t.sectionId);
         const pricePerTicket = sectionData ? sectionData.price : 'N/A';
-
         let statusDisplay = '';
         if (t.status === 'refund_pending') {
-            statusDisplay = `<div class="info" style="color:#e67e22;">狀態：退票審核中</div>`;
+            statusDisplay = `<div class=\"info\" style=\"color:#e67e22;\">狀態：退票審核中</div>`;
         } else if (t.status === 'refunded') {
-            statusDisplay = `<div class="info" style="color:#009688;">狀態：已退款</div>`;
-        } else if (t.status === 'normal') {
-            // statusDisplay = `<div class="info" style="color:green;">狀態：正常</div>`; // Optionally show normal status
+            statusDisplay = `<div class=\"info\" style=\"color:#009688;\">狀態：已退款</div>`;
+        } else if (t.status === 'used') {
+            statusDisplay = `<div class=\"info\" style=\"color:#c0392b;\">狀態：已使用</div>`;
         }
-
-
-        const li = document.createElement('li');
-        li.className = 'my-ticket-item'; // Added class for potential styling
-        li.style.display = 'flex';
-        li.style.justifyContent = 'space-between';
-        li.style.alignItems = 'center';
-
         // Determine how to display seat information
         let seatDisplay = '';
         const isGeneralAdmission = venueSectionInfo && (venueSectionInfo.seatingType === 'generalAdmission' || venueSectionInfo.seatingType === 'general');
         if (isGeneralAdmission) {
             seatDisplay = '自由入座';
         } else if (t.seats && t.seats.length > 0) {
-            // 對號入座格式：A~N排第幾號
             seatDisplay = t.seats.map(s => {
                 if (typeof s === 'object' && s.row && s.seat) {
                     return `${s.row}排${s.seat}號`;
@@ -286,19 +293,19 @@ function renderMyTickets(containerElement) {
                 }
             }).join(', ');
         }
-        // For general admission, explicitly state it if no specific seats are listed or if it's marked as such
         if (isGeneralAdmission && (!t.seats || t.seats.length === 0)) {
             seatDisplay = '自由入座';
         } else if (isGeneralAdmission && t.seats && t.seats.length > 0 && seatDisplay.includes('[object Object]')) {
-            // Fallback if it's general admission but somehow seats are complex objects
             seatDisplay = '自由入座 (多張)';
         }
-
-
-        // 票號顯示：場次ID+流水號（如 1-1-1001 或 2-1-1002）
         const ticketNo = `${t.sessionId}-${t.ticketId || t.id || ''}`;
+        const li = document.createElement('li');
+        li.className = 'my-ticket-item';
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
         li.innerHTML = `
-        <div style="flex-grow:1;">
+        <div style=\"flex-grow:1;\">
           <strong>${concert.title}</strong> (票號: ${ticketNo})<br/>
           場次: ${new Date(session.dateTime).toLocaleString()}<br/>
           場地: ${venueName} | 區域: ${sectionName}<br/>
@@ -307,30 +314,35 @@ function renderMyTickets(containerElement) {
           ${statusDisplay}
         </div>
       `;
-
         const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'ticket-actions'; // Added class for styling
-
-        // 計算是否距離場次開始小於3天
+        actionsDiv.className = 'ticket-actions';
         const now = new Date();
         const sessionDate = new Date(session.dateTime);
         const diffTime = sessionDate - now;
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-        // 退票按鈕：主辦方也可退票，且不限制角色
-        const canRefund = (t.status === 'normal' || t.status === 'confirmed') && diffDays >= 3;
+        const isPRTicket = t.paymentMethod === 'pr';
+        const canRefund = !isPRTicket && (t.status === 'normal' || t.status === 'confirmed') && diffDays >= 3;
         const refundBtn = document.createElement('button');
         refundBtn.className = 'small-btn refund-button';
         refundBtn.textContent = '申請退票';
-        if (!canRefund) {
+        if (isPRTicket) {
+            refundBtn.style.background = '#ccc';
+            refundBtn.style.color = '#888';
+            refundBtn.title = '公關票不可退票';
+            refundBtn.onclick = () => {
+                createModal('提示', `<div style='padding:1rem 0;'>公關票不可退票</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
+                setTimeout(() => {
+                  document.getElementById('modal-ok').onclick = () => {
+                    import('./ui.js').then(mod => mod.removeModal());
+                  };
+                }, 0);
+            };
+        } else if (!canRefund) {
             refundBtn.style.background = '#ccc';
             refundBtn.style.color = '#888';
             refundBtn.title = '退票時間已過，請洽詢管理員';
             refundBtn.onclick = () => {
-                createModal('提示', `\
-                  <div style='padding:1rem 0;'>退票時間已過，請恰管理員!</div>\
-                  <div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>\
-                `);
+                createModal('提示', `<div style='padding:1rem 0;'>退票時間已過，請恰管理員!</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
                 setTimeout(() => {
                   document.getElementById('modal-ok').onclick = () => {
                     import('./ui.js').then(mod => mod.removeModal());
@@ -338,11 +350,9 @@ function renderMyTickets(containerElement) {
                 }, 0);
             };
         } else {
-            refundBtn.onclick = () => handleShowRefundRequestModal(t, concert, session, () => renderMyTickets(containerElement));
+            refundBtn.onclick = () => handleShowRefundRequestModal(t, concert, session, () => renderSpectatorDashboardUI('myTickets'));
         }
         actionsDiv.appendChild(refundBtn);
-
-        // 領票按鈕：演唱會前3天內才可領票與產生QRcode，且票券未被使用
         const canClaim = (diffDays < 3 && diffDays >= 0 && (t.status === 'normal' || t.status === 'confirmed'));
         const claimBtn = document.createElement('button');
         claimBtn.className = 'small-btn claim-ticket-btn';
@@ -350,13 +360,9 @@ function renderMyTickets(containerElement) {
         if (t.status === 'used') {
             claimBtn.style.background = '#ccc';
             claimBtn.style.color = '#888';
-            // 不設 disabled，讓使用者可點擊彈窗
             claimBtn.title = '本票券已經使用，請洽詢工作人員。';
             claimBtn.onclick = () => {
-                createModal('提示', `\
-                  <div style='padding:1rem 0;'>本票券已經使用，請洽詢工作人員。</div>\
-                  <div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>\
-                `);
+                createModal('提示', `<div style='padding:1rem 0;'>本票券已經使用，請洽詢工作人員。</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
                 setTimeout(() => {
                   document.getElementById('modal-ok').onclick = () => {
                     import('./ui.js').then(mod => mod.removeModal());
@@ -368,10 +374,7 @@ function renderMyTickets(containerElement) {
             claimBtn.style.color = '#888';
             claimBtn.title = '僅限演唱會前三天可領票';
             claimBtn.onclick = () => {
-                createModal('提示', `\
-                  <div style='padding:1rem 0;'>僅限演唱會前三天可領票與取得 QR Code</div>\
-                  <div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>\
-                `);
+                createModal('提示', `<div style='padding:1rem 0;'>僅限演唱會前三天可領票與取得 QR Code</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
                 setTimeout(() => {
                   document.getElementById('modal-ok').onclick = () => {
                     import('./ui.js').then(mod => mod.removeModal());
@@ -380,16 +383,7 @@ function renderMyTickets(containerElement) {
             };
         } else {
             claimBtn.onclick = () => {
-                createModal('選擇領票方式', `\
-                  <div style='display:flex; gap:0.5rem; margin-bottom:0.5rem;'>\
-                    <button id='claim-physical'>實體票券</button>\
-                    <button id='claim-qr'>QR電子票券</button>\
-                  </div>\
-                  <div id='claim-result'></div>\
-                  <div style='margin-top:1rem; text-align:right; display:flex; justify-content:flex-end; gap:0.5rem;'>\
-                    <button id='claim-cancel' style='background:#888;'>取消</button>\
-                  </div>\
-                `);
+                createModal('選擇領票方式', `<div style='display:flex; gap:0.5rem; margin-bottom:0.5rem;'><button id='claim-physical'>實體票券</button><button id='claim-qr'>QR電子票券</button></div><div id='claim-result'></div><div style='margin-top:1rem; text-align:right; display:flex; justify-content:flex-end; gap:0.5rem;'><button id='claim-cancel' style='background:#888;'>取消</button></div>`);
                 setTimeout(() => {
                   document.getElementById('claim-physical').onclick = () => {
                     const code = 'PX' + Math.random().toString(36).substr(2, 8).toUpperCase();
@@ -415,18 +409,44 @@ function renderMyTickets(containerElement) {
             };
         }
         actionsDiv.appendChild(claimBtn);
-
-        if (t.status === 'normal' || t.status === 'confirmed') {
+        const canTransfer = !isPRTicket && (t.status === 'normal' || t.status === 'confirmed');
+        if (canTransfer) {
             const transferBtn = document.createElement('button');
             transferBtn.className = 'small-btn transfer-button';
             transferBtn.textContent = '轉移';
             transferBtn.onclick = () => handleShowTransferTicketModal(t, () => renderMyTickets(containerElement));
             actionsDiv.appendChild(transferBtn);
+        } else if (isPRTicket) {
+            const transferBtn = document.createElement('button');
+            transferBtn.className = 'small-btn transfer-button';
+            transferBtn.textContent = '轉移';
+            transferBtn.style.background = '#ccc';
+            transferBtn.style.color = '#888';
+            transferBtn.title = '公關票不可轉移';
+            transferBtn.onclick = () => {
+                createModal('提示', `<div style='padding:1rem 0;'>公關票不可轉移</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
+                setTimeout(() => {
+                  document.getElementById('modal-ok').onclick = () => {
+                    import('./ui.js').then(mod => mod.removeModal());
+                  };
+                }, 0);
+            };
+            actionsDiv.appendChild(transferBtn);
         }
-
         li.appendChild(actionsDiv);
         ul.appendChild(li);
-    });
+      });
+    }
+    sortSelect.onchange = renderList;
+    hideUsedRefunded.onchange = renderList;
+    sortOrderBtn.onclick = () => {
+      sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      sortOrderBtn.textContent = sortOrder === 'asc' ? '▲' : '▼';
+      renderList();
+    };
+    // 初始化箭頭
+    sortOrderBtn.textContent = sortOrder === 'asc' ? '▲' : '▼';
+    renderList();
 }
 
 function handleShowTransferTicketModal(ticket, refreshCb) {

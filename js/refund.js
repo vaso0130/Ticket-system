@@ -14,7 +14,18 @@ export function initRefundModule(data, saveDataFn, getCurrentUserFn, onUpdateCal
 }
 
 // For User: Show modal to request a refund
-export function handleShowRefundRequestModal(ticket, concert, session) { // ticket is a single ticket object
+export function handleShowRefundRequestModal(ticket, concert, session, refreshCb) { // ticket is a single ticket object
+    // 公關票防呆
+    if(ticket.paymentMethod === 'pr') {
+        createModal('提示', `<div style='padding:1rem 0;'>公關票不可退票</div><div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>`);
+        setTimeout(() => {
+            document.getElementById('modal-ok').onclick = () => {
+                removeModal();
+            };
+        }, 0);
+        return;
+    }
+
     const modal = createModal();
     const venue = appDataRef.venues.find(v => v.id === concert.venueId);
     const venueName = venue ? venue.name : '未知場地';
@@ -44,17 +55,17 @@ export function handleShowRefundRequestModal(ticket, concert, session) { // tick
 
     modal.box.querySelector('#cancelRefundBtn').onclick = () => removeModal(modal.overlay);
     modal.box.querySelector('#confirmRefundBtn').onclick = () => {
-        processRefundRequest(ticket, modal);
+        processRefundRequest(ticket, modal, refreshCb);
     };
 }
 
-function processRefundRequest(ticket, modal) { // ticket is a single ticket object
+function processRefundRequest(ticket, modal, refreshCb) { // ticket is a single ticket object
     const confirmBtn = modal.box.querySelector('#confirmRefundBtn');
     confirmBtn.disabled = true;
     confirmBtn.textContent = '處理中...';
 
     setTimeout(() => {
-        const ticketToUpdate = appDataRef.tickets.find(t => t.id === ticket.id);
+        const ticketToUpdate = appDataRef.tickets.find(t => (t.ticketId === ticket.ticketId || t.id === ticket.id));
         if (ticketToUpdate) {
             const purchaseTime = new Date(ticketToUpdate.purchaseTime).getTime();
             const now = Date.now();
@@ -72,19 +83,20 @@ function processRefundRequest(ticket, modal) { // ticket is a single ticket obje
                     }
                 }
                 saveDataCallbackRef();
-                createModal('完成', `<p>票券 (ID: ${ticket.id}) 已自動退票。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
+                removeModal(modal.overlay);
+                createModal('退票成功', `<p>票券 (ID: ${ticketToUpdate.ticketId || ticketToUpdate.id}) 已自動退票。</p>`, [{ text: '確定', onClick: () => { removeModal(); if (typeof refreshCb === 'function') refreshCb(); } }]);
             } else {
                 ticketToUpdate.status = 'refund_pending';
                 ticketToUpdate.refundRequestTime = now;
                 saveDataCallbackRef();
-                createModal('完成', `<p>票券 (ID: ${ticket.id}) 已提交退票申請。</p>`, [{ text: '確定', onClick: () => removeModal() }]);
+                removeModal(modal.overlay);
+                createModal('退票申請已送出', `<p>票券 (ID: ${ticketToUpdate.ticketId || ticketToUpdate.id}) 已提交退票申請，請等待審查。</p>`, [{ text: '確定', onClick: () => { removeModal(); if (typeof refreshCb === 'function') refreshCb(); } }]);
             }
-            removeModal(modal.overlay);
             if (onRefundUpdateCallbackRef) {
                 onRefundUpdateCallbackRef();
             }
         } else {
-            console.error("Ticket not found for refund processing:", ticket.id);
+            console.error("Ticket not found for refund processing:", ticket.ticketId || ticket.id);
             const refundError = modal.box.querySelector('#refundError');
             refundError.textContent = '處理退票時發生錯誤，找不到票券。';
             refundError.style.display = 'block';
