@@ -2,7 +2,7 @@
 import { initVenueManagementModule, renderVenueManagementUI } from './venueManagement.js';
 import { initEventManagementModule, renderAdminEventManagementUI } from './eventManagement.js'; // Import event management
 import { renderAdminRefundReviewUI } from './refund.js'; // Import refund review UI
-import { renderVerificationUI } from './verification.js';
+// import { renderVerificationUI } from './verification.js'; // Removed verification UI import
 
 let mainContentElement;
 let appData = {}; // { users, venues, concerts, tickets }
@@ -51,7 +51,7 @@ export function renderAdminDashboardUI(){
     <button id="adminTicketsBtn">票務管理</button>
     <button id="adminRefundBtn">退票審核</button>
     <button id="adminSalesReportBtn">銷售報表匯出</button>
-    <button id="adminVerifyBtn">票券驗證</button>
+    <!-- <button id="adminVerifyBtn">票券驗證</button> -->
   </nav>
   <section id="adminContent">
   </section>
@@ -62,7 +62,7 @@ export function renderAdminDashboardUI(){
   document.getElementById('adminTicketsBtn').onclick = () => renderAdminEventManagementUI(mainContentElement, 'adminContent'); 
   document.getElementById('adminRefundBtn').onclick = () => renderAdminRefundReviewUI('adminContent'); // Use imported function
   document.getElementById('adminSalesReportBtn').onclick = () => renderAdminSalesReportUI('adminContent'); // New button
-  document.getElementById('adminVerifyBtn').onclick = () => renderVerificationUI(mainContentElement.querySelector('#adminContent'));
+  // document.getElementById('adminVerifyBtn').onclick = () => renderVerificationUI(mainContentElement.querySelector('#adminContent'));
 
   // Default show users
   renderAdminUsers();

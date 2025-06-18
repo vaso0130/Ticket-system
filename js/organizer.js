@@ -1,6 +1,7 @@
 import { populateVenueOptions } from './ui.js';
 import { initEventManagementModule, renderOrganizerEventManagementUI } from './eventManagement.js'; // Import event management
 import { renderVerificationUI } from './verification.js';
+import { createRefundReviewListItem } from './refund.js';
 
 let mainContentRef;
 let appDataRef;
@@ -36,7 +37,7 @@ export function renderOrganizerDashboardUI() {
     <nav style="margin-bottom: 1rem;">
       <button id="orgTicketsBtn">票務管理</button>
       <button id="orgAccountingBtn">帳務管理</button>
-      <button id="orgVerifyBtn">票券驗證</button>
+      <!--<button id="orgVerifyBtn">票券驗證</button>-->
       <button id="orgRefundBtn">退票審核</button>
       <button id="orgGrantBtn">發送公關票</button>
     </nav>
@@ -52,11 +53,11 @@ export function renderOrganizerDashboardUI() {
         }
     };
     document.getElementById('orgAccountingBtn').onclick = () => renderOrgAccounting();
-    document.getElementById('orgVerifyBtn').onclick = () => {
-        if (organizerContentElement) {
-            renderVerificationUI(organizerContentElement);
-        }
-    };
+    //document.getElementById('orgVerifyBtn').onclick = () => {
+    //    if (organizerContentElement) {
+    //        renderVerificationUI(organizerContentElement);
+    //    }
+    //};
     document.getElementById('orgRefundBtn').onclick = () => {
         if (organizerContentElement) {
             renderOrganizerRefundReviewUI(organizerContentElement);
@@ -163,42 +164,35 @@ function renderOrganizerRefundReviewUI(containerElement) {
     const ul = containerElement.querySelector('#refundListOrg');
     ul.innerHTML = '';
     // 只顯示自己主辦活動的退票
-    const currentUser = (window.getCurrentUser && window.getCurrentUser()) || (typeof getCurrentUserCallback === 'function' && getCurrentUserCallback());
-    const myConcertIds = appDataRef.concerts.filter(c => c.organizerId === currentUser.username).map(c => c.id);
-    const pendingRefunds = appDataRef.tickets.filter(t => t.status === 'refund_pending' && myConcertIds.includes(t.concertId));
+    let currentUser = null;
+    if (typeof organizerGetCurrentUserCallback === 'function') {
+        currentUser = organizerGetCurrentUserCallback();
+    } else if (window.getCurrentUser) {
+        currentUser = window.getCurrentUser();
+    }
+    const myConcertIds = appDataRef.concerts.filter(c => String(c.organizerId) === String(currentUser && currentUser.username)).map(c => String(c.id));
+    const pendingRefunds = appDataRef.tickets.filter(t => t.status === 'refund_pending' && myConcertIds.includes(String(t.concertId)));
     if (pendingRefunds.length === 0) {
         ul.innerHTML = '<li>目前無待審核的退票申請。</li>';
         return;
     }
     pendingRefunds.forEach(t => {
-        const concert = appDataRef.concerts.find(c => c.id === t.concertId);
-        const li = document.createElement('li');
-        li.innerHTML = `
-        <div style="flex-grow:1;">
-          <strong>${concert.title}</strong><br/>
-          申請人: ${t.username}
-        </div>
-      `;
-        const approveBtn = document.createElement('button');
-        approveBtn.className = 'small-btn';
-        approveBtn.textContent = '同意';
-        approveBtn.onclick = () => {
-            t.status = 'refunded';
-            saveDataCallbackRef();
-            renderOrganizerRefundReviewUI(containerElement);
-        };
-        const rejectBtn = document.createElement('button');
-        rejectBtn.className = 'small-btn';
-        rejectBtn.style.background = '#888';
-        rejectBtn.textContent = '拒絕';
-        rejectBtn.onclick = () => {
-            t.status = 'normal';
-            saveDataCallbackRef();
-            renderOrganizerRefundReviewUI(containerElement);
-        };
-        li.appendChild(approveBtn);
-        li.appendChild(rejectBtn);
-        ul.appendChild(li);
+        ul.appendChild(
+            createRefundReviewListItem(
+                t,
+                appDataRef.concerts,
+                () => {
+                    t.status = 'refunded';
+                    saveDataCallbackRef();
+                    renderOrganizerRefundReviewUI(containerElement);
+                },
+                () => {
+                    t.status = 'normal';
+                    saveDataCallbackRef();
+                    renderOrganizerRefundReviewUI(containerElement);
+                }
+            )
+        );
     });
 }
 

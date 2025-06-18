@@ -78,7 +78,7 @@ export function processLinePayPayment(modal, paymentDetails, onPurchaseSuccessCa
       <p>正在將您重新導向到 LINE Pay...</p>
       <div class="info" style="margin-top:1rem;">請勿關閉視窗，付款完成後將自動返回。</div>
       <div style="margin-top: 1rem, text-align: center;">
-        <img src="https://scdn.line-apps.com/n/line_pay/img/lp_logo.png" alt="LINE Pay Logo" style="height: 50px;">
+        <img src="https://cdn.shopify.com/app-store/listing_images/e6259ab2f1bcb0e83a45fccf5798226a/icon/CMrd4Zu0vfYCEAE=.png" alt="LINE Pay Logo" style="height: 50px;">
       </div>
     `;
     setTimeout(() => {

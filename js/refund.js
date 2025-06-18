@@ -29,7 +29,7 @@ export function handleShowRefundRequestModal(ticket, concert, session) { // tick
       <p>您確定要退訂以下票券嗎？</p>
       <div class="ticket-details-summary" style="background:#f9f9f9; padding:10px; border-radius:5px; margin-bottom:15px;">
         <strong>${concert.title}</strong><br/>
-        票號: ${ticket.id}<br/>
+        票號: ${ticket.ticketId || ticket.id || '-'}<br/>
         場次: ${new Date(session.dateTime).toLocaleString()}<br/>
         場地: ${venueName} | 區域: ${sectionName}<br/>
         票價: NT$${pricePerTicket}
@@ -94,6 +94,40 @@ function processRefundRequest(ticket, modal) { // ticket is a single ticket obje
     }, 1500);
 }
 
+// 共用：產生退票審查清單項目
+export function createRefundReviewListItem(t, concerts, approveHandler, rejectHandler) {
+    const concert = concerts.find(c => String(c.id) === String(t.concertId));
+    // 取得座位資訊
+    let seatInfo = '';
+    if (t.seats && t.seats.length > 0) {
+        seatInfo = t.seats.map(s => s.label || (s.row && s.seat ? `${s.row}排${s.seat}號` : s.description || '')).join(', ');
+    }
+    // 申請時間
+    let applyTime = t.refundRequestTime ? new Date(t.refundRequestTime).toLocaleString() : '-';
+    const li = document.createElement('li');
+    li.innerHTML = `
+    <div style="flex-grow:1;">
+      <strong>${concert ? concert.title : t.concertId}</strong><br/>
+      票號: ${t.ticketId || t.id || '-'}<br/>
+      座位: ${seatInfo || '-'}<br/>
+      申請人: ${t.username}<br/>
+      申請日期: ${applyTime}
+    </div>
+  `;
+    const approveBtn = document.createElement('button');
+    approveBtn.className = 'small-btn';
+    approveBtn.textContent = '同意';
+    approveBtn.onclick = approveHandler;
+    const rejectBtn = document.createElement('button');
+    rejectBtn.className = 'small-btn';
+    rejectBtn.style.background = '#888';
+    rejectBtn.textContent = '拒絕';
+    rejectBtn.onclick = rejectHandler;
+    li.appendChild(approveBtn);
+    li.appendChild(rejectBtn);
+    return li;
+}
+
 // For Admin: Render UI for reviewing pending refunds
 export function renderAdminRefundReviewUI(containerElementId) {
     const container = document.getElementById(containerElementId) || document.querySelector(containerElementId); // Allow ID or selector
@@ -112,62 +146,26 @@ export function renderAdminRefundReviewUI(containerElementId) {
     }
     ul.innerHTML = '';
     const pendingRefunds = appDataRef.tickets.filter(t => t.status === 'refund_pending');
-
     if (pendingRefunds.length === 0) {
         ul.innerHTML = '<li>目前無待審核的退票申請。</li>';
         return;
     }
-
     pendingRefunds.forEach(t => {
-        const concert = appDataRef.concerts.find(c => c.id === t.concertId);
-        if (!concert) {
-            console.warn(`Concert not found for ticket during refund review: ${t.concertId}`);
-            return; 
-        }
-
-        const li = document.createElement('li');
-        li.innerHTML = `
-        <div style="flex-grow:1;">
-          <strong>${concert.title}</strong><br/>
-          申請人: ${t.username}<br/>
-          申請退票數量: ${t.refundRequest} 張 (原持有 ${t.quantity} 張，申請退 ${t.refundRequest} 張)
-        </div>
-      `;
-        const approveBtn = document.createElement('button');
-        approveBtn.className = 'small-btn';
-        approveBtn.textContent = '同意';
-        approveBtn.onclick = () => {
-            // It is assumed t.quantity is the current holding, and t.refundRequest is the amount to be refunded.
-            // If approved, the user will have (t.quantity - t.refundRequest) tickets left for this concert entry.
-            // The concert's ticketsSold should also be decremented by t.refundRequest.
-
-            const concertData = appDataRef.concerts.find(c => c.id === t.concertId);
-            if (concertData) {
-                concertData.ticketsSold -= t.refundRequest;
-                if (concertData.ticketsSold < 0) concertData.ticketsSold = 0;
-            }
-
-            t.quantity -= t.refundRequest; // Reduce the number of tickets the user holds for this specific ticket entry
-
-            // 審核通過後，標記為已退款（refunded），不直接移除
-            t.status = 'refunded';
-            delete t.refundRequest;
-            saveDataCallbackRef();
-            if (onRefundUpdateCallbackRef) onRefundUpdateCallbackRef('admin'); // Refresh admin UI
-        };
-
-        const rejectBtn = document.createElement('button');
-        rejectBtn.className = 'small-btn';
-        rejectBtn.style.background = '#888';
-        rejectBtn.textContent = '拒絕';
-        rejectBtn.onclick = () => {
-            t.status = 'normal';
-            delete t.refundRequest;
-            saveDataCallbackRef();
-            if (onRefundUpdateCallbackRef) onRefundUpdateCallbackRef('admin'); // Refresh admin UI
-        };
-        li.appendChild(approveBtn);
-        li.appendChild(rejectBtn);
-        ul.appendChild(li);
+        ul.appendChild(
+            createRefundReviewListItem(
+                t,
+                appDataRef.concerts,
+                () => {
+                    t.status = 'refunded';
+                    saveDataCallbackRef();
+                    renderAdminRefundReviewUI(containerElementId);
+                },
+                () => {
+                    t.status = 'normal';
+                    saveDataCallbackRef();
+                    renderAdminRefundReviewUI(containerElementId);
+                }
+            )
+        );
     });
 }
