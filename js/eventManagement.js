@@ -401,7 +401,15 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
                     session.sections.forEach(sect => {
                         const venueSection = venue ? venue.seatMap.find(s => s.id === sect.sectionId) : null;
                         const sectionName = venueSection ? venueSection.name : sect.sectionId;
-                        sectionsDetailHtml += `<li><strong>${sectionName}:</strong> NT$${sect.price} | 售票: ${sect.ticketsSold}/${sect.ticketsAvailable}</li>`;
+                        // 修正：票數計算納入所有狀態的票（含預設票）
+                        const allTickets = em_appData.tickets.filter(t =>
+                            String(t.concertId) === String(event.id) &&
+                            String(t.sessionId) === String(session.sessionId) &&
+                            String(t.sectionId) === String(sect.sectionId) &&
+                            (t.status === 'confirmed' || t.status === 'used' || t.paymentMethod === 'pr' || t.status === 'normal' || t.status === 'pending')
+                        );
+                        const soldCount = allTickets.length;
+                        sectionsDetailHtml += `<li><strong>${sectionName}:</strong> NT$${sect.price} | 售票: ${soldCount}/${sect.ticketsAvailable}</li>`;
                     });
                 } else {
                     sectionsDetailHtml += '<li>此場次尚無區域票價設定。</li>';

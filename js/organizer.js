@@ -98,7 +98,7 @@ function renderOrgAccounting() {
         </thead>
         <tbody id="orgAccountingBody"></tbody>
         <tfoot style="font-weight:bold;">
-          <tr>
+            <tr>
             <td colspan="4" style="text-align:right;">總收入：</td>
             <td id="orgTotalRevenue">NT$0</td>
           </tr>
@@ -121,12 +121,12 @@ function renderOrgAccounting() {
         let priceList = [];
         concert.sessions.forEach(session => {
             session.sections.forEach(section => {
-                // 有效票券
+                // 有效票券（含預設票）
                 const validTickets = tickets.filter(t =>
                     String(t.concertId) === String(concert.id) &&
                     String(t.sessionId) === String(session.sessionId) &&
                     String(t.sectionId) === String(section.sectionId) &&
-                    (t.status === 'confirmed' || t.status === 'used' || t.paymentMethod === 'pr')
+                    (t.status === 'confirmed' || t.status === 'used' || t.paymentMethod === 'pr' || t.status === 'normal' || t.status === 'pending')
                 );
                 // 公關票
                 const prTickets = validTickets.filter(t => t.paymentMethod === 'pr');
