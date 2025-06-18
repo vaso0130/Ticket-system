@@ -1,6 +1,7 @@
 import { createModal, removeModal } from './ui.js'; // Assuming ui.js is in the same directory
 import { handleShowBuyTicketModal } from './ticketing.js'; // Import the ticketing function
 import { handleShowRefundRequestModal } from './refund.js'; // Import refund modal function
+import { getSectionAvailableCount } from './eventManagement.js';
 
 let mainContentRef;
 let appDataRef; 
@@ -139,6 +140,7 @@ function renderConcertsForSpectator(containerElement) {
 }
 
 function renderConcertSessions(sessionsContainer, concert, now) {
+    const { tickets } = appDataRef;
     if (!concert.sessions || concert.sessions.length === 0) {
         sessionsContainer.innerHTML = '<p style="font-size:0.9em; color: #777;">此活動目前沒有場次。</p>';
     } else {
@@ -151,7 +153,7 @@ function renderConcertSessions(sessionsContainer, concert, now) {
             let totalTicketsLeftInSession = 0;
             if (session.sections && session.sections.length > 0) {
                 session.sections.forEach(section => {
-                    totalTicketsLeftInSession += (section.ticketsAvailable - section.ticketsSold);
+                    totalTicketsLeftInSession += getSectionAvailableCount(concert.id, session.sessionId, section.sectionId, tickets, section.ticketsAvailable);
                 });
             }
 

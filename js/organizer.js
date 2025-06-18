@@ -1,5 +1,5 @@
 import { populateVenueOptions } from './ui.js';
-import { initEventManagementModule, renderOrganizerEventManagementUI } from './eventManagement.js'; // Import event management
+import { initEventManagementModule, renderOrganizerEventManagementUI, getSectionSoldCount, getSectionAvailableCount } from './eventManagement.js'; // Import event management
 import { renderVerificationUI } from './verification.js';
 import { createRefundReviewListItem } from './refund.js';
 
@@ -104,55 +104,55 @@ function renderOrgAccounting() {
           </tr>
         </tfoot>
       </table>`;
-    const tbody = document.getElementById('orgAccountingBody');
-    tbody.innerHTML = '';
-    let total = 0;
-    let currentUser = null;
-    if (typeof organizerGetCurrentUserCallback === 'function') {
-        currentUser = organizerGetCurrentUserCallback();
-    } else if (window.getCurrentUser) {
-        currentUser = window.getCurrentUser();
-    }
-    const myConcerts = concerts.filter(c => String(c.organizerId) === String(currentUser && currentUser.username));
-    myConcerts.forEach(concert => {
-        let concertTotal = 0;
-        let concertSold = 0;
-        let concertPR = 0;
-        let priceList = [];
-        concert.sessions.forEach(session => {
-            session.sections.forEach(section => {
-                // 有效票券（含預設票）
-                const validTickets = tickets.filter(t =>
-                    String(t.concertId) === String(concert.id) &&
-                    String(t.sessionId) === String(session.sessionId) &&
-                    String(t.sectionId) === String(section.sectionId) &&
-                    (t.status === 'confirmed' || t.status === 'used' || t.paymentMethod === 'pr' || t.status === 'normal' || t.status === 'pending')
-                );
-                // 公關票
-                const prTickets = validTickets.filter(t => t.paymentMethod === 'pr');
-                // 一般票
-                const normalTickets = validTickets.filter(t => t.paymentMethod !== 'pr');
-                const sold = normalTickets.length;
-                const prCount = prTickets.length;
-                concertSold += sold;
-                concertPR += prCount;
-                concertTotal += sold * (section.price || 0);
-                if (sold > 0 || prCount > 0) priceList.push(section.price);
+    // 修改帳務管理票數統計，統一呼叫共用函式
+    function renderOrganizerAccountingUI(concerts, tickets) {
+        const tbody = document.getElementById('orgAccountingBody');
+        tbody.innerHTML = '';
+        let total = 0;
+        let currentUser = null;
+        if (typeof organizerGetCurrentUserCallback === 'function') {
+            currentUser = organizerGetCurrentUserCallback();
+        } else if (window.getCurrentUser) {
+            currentUser = window.getCurrentUser();
+        }
+        const myConcerts = concerts.filter(c => String(c.organizerId) === String(currentUser && currentUser.username));
+        myConcerts.forEach(concert => {
+            let concertTotal = 0;
+            let concertSold = 0;
+            let concertPR = 0;
+            let priceList = [];
+            concert.sessions.forEach(session => {
+                session.sections.forEach(section => {
+                    // 統一用共用函式計算已售票數
+                    const sold = getSectionSoldCount(concert.id, session.sessionId, section.sectionId, tickets);
+                    // 公關票數
+                    const prCount = (tickets || []).filter(t =>
+                        String(t.concertId) === String(concert.id) &&
+                        String(t.sessionId) === String(session.sessionId) &&
+                        String(t.sectionId) === String(section.sectionId) &&
+                        t.paymentMethod === 'pr'
+                    ).length;
+                    concertSold += sold;
+                    concertPR += prCount;
+                    concertTotal += sold * (section.price || 0);
+                    if (sold > 0 || prCount > 0) priceList.push(section.price);
+                });
             });
+            const priceStr = priceList.length > 0 ? priceList.join(', ') : '-';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+            <td>${concert.title}</td>
+            <td>${priceStr}</td>
+            <td>${concertSold}</td>
+            <td>${concertPR}</td>
+            <td>${concertTotal}</td>
+          `;
+            tbody.appendChild(tr);
+            total += concertTotal;
         });
-        const priceStr = priceList.length > 0 ? priceList.join(', ') : '-';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-        <td>${concert.title}</td>
-        <td>${priceStr}</td>
-        <td>${concertSold}</td>
-        <td>${concertPR}</td>
-        <td>${concertTotal}</td>
-      `;
-        tbody.appendChild(tr);
-        total += concertTotal;
-    });
-    document.getElementById('orgTotalRevenue').textContent = `NT$${total}`;
+        document.getElementById('orgTotalRevenue').textContent = `NT$${total}`;
+    }
+    renderOrganizerAccountingUI(concerts, tickets);
 }
 
 // Organizer審查退票（僅顯示自己主辦活動的票）

@@ -1,6 +1,6 @@
 // Admin module (admin.js)
 import { initVenueManagementModule, renderVenueManagementUI } from './venueManagement.js';
-import { initEventManagementModule, renderAdminEventManagementUI } from './eventManagement.js'; // Import event management
+import { initEventManagementModule, renderAdminEventManagementUI, getSectionSoldCount, getSectionAvailableCount } from './eventManagement.js'; // Import event management
 import { renderAdminRefundReviewUI } from './refund.js'; // Import refund review UI
 // import { renderVerificationUI } from './verification.js'; // Removed verification UI import
 
@@ -403,8 +403,9 @@ function renderAdminSalesReportUI(targetContainerId = 'adminContent') {
   };
 }
 
+// 修改報表產生票數統計，統一呼叫共用函式
 function generateSalesReportCSV() {
-  const { concerts, venues } = appData;
+  const { concerts, venues, tickets } = appData;
   if (!concerts || !venues) {
     throw new Error("Concert or venue data is not available.");
   }
@@ -425,7 +426,8 @@ function generateSalesReportCSV() {
             const venueSection = venue && venue.seatMap ? venue.seatMap.find(vs => vs.id === sectionDetail.sectionId) : null;
             const sectionName = venueSection ? venueSection.name : sectionDetail.sectionId;
             const price = sectionDetail.price;
-            const ticketsSold = sectionDetail.ticketsSold;
+            // 統一用共用函式計算已售票數
+            const ticketsSold = getSectionSoldCount(event.id, session.sessionId, sectionDetail.sectionId, tickets);
             const sectionRevenue = price * ticketsSold;
 
             csvRows.push([

@@ -1,6 +1,7 @@
 // Ticketing Module
 import { createModal, removeModal } from './ui.js';
 import { processCreditCardPayment, processLinePayPayment, processAtmPayment } from './payment.js'; // Import payment processing functions
+import { getSectionAvailableCount } from './eventManagement.js';
 
 let appDataRef;
 let saveDataCallbackRef;
@@ -30,7 +31,7 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
         const venue = appDataRef.venues.find(v => v.id === event.venueId);
         const venueSection = venue ? venue.seatMap.find(vs => vs.id === section.sectionId) : null;
         const sectionName = venueSection ? venueSection.name : section.sectionId;
-        const ticketsLeftInSection = section.ticketsAvailable - section.ticketsSold;
+        const ticketsLeftInSection = getSectionAvailableCount(event.id, session.sessionId, section.sectionId, tickets, section.ticketsAvailable);
         if (ticketsLeftInSection > 0) { // Only show sections with available tickets
             sectionOptionsHtml += `<option value="${section.sectionId}">${sectionName} (NT$${section.price} - 剩餘 ${ticketsLeftInSection} 張)</option>`;
         }
@@ -100,7 +101,7 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
         const selectedSectionId = sectionSelect.value;
         const selectedSection = session.sections.find(sec => sec.sectionId === selectedSectionId);
         if (selectedSection) {
-            const ticketsLeft = selectedSection.ticketsAvailable - selectedSection.ticketsSold;
+            const ticketsLeft = getSectionAvailableCount(event.id, session.sessionId, selectedSection.sectionId, tickets, selectedSection.ticketsAvailable);
             quantityInput.max = ticketsLeft;
             quantityInput.value = Math.min(1, ticketsLeft); // Default to 1 or max available if less than 1
             sectionDetailsDiv.innerHTML = `<p>已選區域票價：NT$${selectedSection.price} | 剩餘票數：${ticketsLeft}</p>`;

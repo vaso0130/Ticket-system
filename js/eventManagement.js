@@ -450,21 +450,8 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
                     session.sections.forEach(sect => {
                         const venueSection = venue ? venue.seatMap.find(s => s.id === sect.sectionId) : null;
                         const sectionName = venueSection ? venueSection.name : sect.sectionId;
-                        // 修正：票數計算納入所有狀態的票（含預設票、已購票、公關票）
-                        // 售票數只計算有有效 username（非空字串）或 paymentMethod 為 pr（公關票）的票
-                        const soldTickets = (em_appData.tickets || []).filter(t =>
-                            String(t.concertId) === String(event.id) &&
-                            String(t.sessionId) === String(session.sessionId) &&
-                            String(t.sectionId) === String(sect.sectionId) &&
-                            ((typeof t.username === 'string' && t.username.trim() !== '') || t.paymentMethod === 'pr')
-                        );
-                        console.log('DEBUG 售票統計', {
-                            eventId: event.id,
-                            sessionId: session.sessionId,
-                            sectionId: sect.sectionId,
-                            soldTickets
-                        });
-                        const soldCount = soldTickets.length;
+                        // 修正：售出票券的計算方式，以反映所有已分配的票券（包含已購買、公關票等）。
+                        const soldCount = getSectionSoldCount(event.id, session.sessionId, sect.sectionId, em_appData.tickets);
                         sectionsDetailHtml += `<li><strong>${sectionName}:</strong> NT$${sect.price} | 售票: ${soldCount}/${sect.ticketsAvailable}</li>`;
                     });
                 } else {
@@ -744,14 +731,15 @@ function handleSaveEventChangesFromModal(rolePrefix, parentListContainer) {
 
 // === 共用票券統計函式 ===
 /**
- * 計算某區已分配/已購票/公關票的張數
+ * 計算某區已售出或已分配的票券總數。
+ * 透過檢查票券狀態是否不為 'normal' 來判斷。'normal' 狀態代表票券為預設、可供銷售的。
  */
 export function getSectionSoldCount(concertId, sessionId, sectionId, tickets) {
     return (tickets || []).filter(t =>
         String(t.concertId) === String(concertId) &&
         String(t.sessionId) === String(sessionId) &&
         String(t.sectionId) === String(sectionId) &&
-        ((typeof t.username === 'string' && t.username.trim() !== '') || t.paymentMethod === 'pr')
+        t.status !== 'normal'
     ).length;
 }
 /**
