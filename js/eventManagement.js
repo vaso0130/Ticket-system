@@ -355,8 +355,7 @@ function handleSaveSessionFromModal(rolePrefix, parentListContainer) {
         sectionsData.push({
             sectionId,
             price,
-            ticketsAvailable,
-            ticketsSold: 0
+            ticketsAvailable
         });
         totalTicketsForSession += ticketsAvailable;
     });
@@ -566,7 +565,9 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
                         const sessionToDelete = event.sessions[sessionIndex];
                         let ticketsSoldInSession = 0;
                         if(sessionToDelete.sections) {
-                            sessionToDelete.sections.forEach(sec => ticketsSoldInSession += (sec.ticketsSold || 0));
+                            sessionToDelete.sections.forEach(sec => {
+                                ticketsSoldInSession += getSectionSoldCount(event.id, sessionToDelete.sessionId, sec.sectionId, em_appData.tickets);
+                            });
                         }
 
                         if (ticketsSoldInSession > 0) {
@@ -597,7 +598,9 @@ function renderEventListInternal(searchScopeElement, listElementId, isAdminView)
                     if (eventToDelete.sessions) {
                         eventToDelete.sessions.forEach(session => {
                             if (session.sections) {
-                                session.sections.forEach(sec => totalTicketsSoldInEvent += (sec.ticketsSold || 0));
+                                session.sections.forEach(sec => {
+                                    totalTicketsSoldInEvent += getSectionSoldCount(eventToDelete.id, session.sessionId, sec.sectionId, em_appData.tickets);
+                                });
                             }
                         });
                     }
@@ -731,8 +734,8 @@ function handleSaveEventChangesFromModal(rolePrefix, parentListContainer) {
 
 // === 共用票券統計函式 ===
 /**
- * 計算某區已售出或已分配的票券總數。
- * 透過檢查票券狀態是否不為 'normal' 來判斷。'normal' 狀態代表票券為預設、可供銷售的。
+ * 計算某區已分配/已購票/公關票的張數（不含預設票）
+ * 新邏輯：加總所有符合條件的票券物件中的座位數量 (seats.length)
  */
 export function getSectionSoldCount(concertId, sessionId, sectionId, tickets) {
     return (tickets || []).filter(t =>
@@ -740,7 +743,7 @@ export function getSectionSoldCount(concertId, sessionId, sectionId, tickets) {
         String(t.sessionId) === String(sessionId) &&
         String(t.sectionId) === String(sectionId) &&
         t.status !== 'normal'
-    ).length;
+    ).reduce((total, ticket) => total + (ticket.seats ? ticket.seats.length : 0), 0);
 }
 /**
  * 計算某區剩餘可售票數

@@ -151,51 +151,74 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
         return;
     }
 
-    sectionToUpdate.ticketsSold += quantity;
+    // REMOVED: This is the source of the bug. The source of truth should be the tickets array.
+    // sectionToUpdate.ticketsSold += quantity;
 
     const newlyCreatedTickets = [];
+    // Find the highest existing ticket index for this section to avoid collisions
+    const existingTickets = appDataRef.tickets.filter(t => 
+        String(t.concertId) === String(event.id) &&
+        String(t.sessionId) === String(session.sessionId) &&
+        String(t.sectionId) === String(selectedSection.sectionId)
+    );
+
     for (let i = 0; i < quantity; i++) {
         let seatInfoForThisTicket;
-        // assignedSeats is an array of seat objects, one for each of the 'quantity' tickets.
-        // For assigned/numbered, seats[i] will be like { row: R, seat: S, label: 'R排S號' }
-        // For general, seats[i] will be like { type: 'generalAdmission', description: '自由座' }
         if (assignedSeats && assignedSeats[i]) {
             seatInfoForThisTicket = assignedSeats[i];
-            // 統一格式：若 row 為數字，轉成大寫英文字母
             if (seatInfoForThisTicket.row && typeof seatInfoForThisTicket.row === 'number') {
-                seatInfoForThisTicket.row = String.fromCharCode(65 + seatInfoForThisTicket.row - 1); // 1=>A, 2=>B...
+                seatInfoForThisTicket.row = String.fromCharCode(65 + seatInfoForThisTicket.row - 1);
             }
-            // 統一格式：補上 label
             if (seatInfoForThisTicket.row && seatInfoForThisTicket.seat) {
                 seatInfoForThisTicket.label = `${seatInfoForThisTicket.row}排${seatInfoForThisTicket.seat}號`;
             }
         } else {
-            // Fallback if assignedSeats is not as expected, though ticketing.js should ensure it is.
-            console.warn("Seat information missing for a ticket, falling back to general admission type.")
             seatInfoForThisTicket = { type: 'generalAdmission', description: '自由座 (資訊缺失)' };
         }
 
-        const ticketData = {
-            id: `T${Date.now()}-${currentUser.username.slice(0,3)}-${i}-${Math.random().toString(36).substring(2,7)}`, // Enhanced uniqueness
-            username: currentUser.username,
-            concertId: event.id,
-            sessionId: session.sessionId,
-            sectionId: selectedSection.sectionId,
-            status: 'confirmed',
-            purchaseTime: new Date().toISOString(),
-            paymentMethod: paymentMethodDesc,
-            seats: [seatInfoForThisTicket] // Ensure 'seats' is an array containing the seat object, as per data.js structure
-        };
-        tickets.push(ticketData);
-        newlyCreatedTickets.push(ticketData);
+        // Find an available ticket to update, instead of creating a new one.
+        const availableTicketIndex = appDataRef.tickets.findIndex(t => 
+            String(t.concertId) === String(event.id) &&
+            String(t.sessionId) === String(session.sessionId) &&
+            String(t.sectionId) === String(selectedSection.sectionId) &&
+            t.status === 'normal' // Find an unsold ticket
+        );
+
+        if (availableTicketIndex !== -1) {
+            // Update the existing ticket
+            const ticketToUpdate = appDataRef.tickets[availableTicketIndex];
+            ticketToUpdate.username = currentUser.username;
+            ticketToUpdate.purchaseTime = new Date().toISOString();
+            ticketToUpdate.paymentMethod = paymentMethodDesc;
+            ticketToUpdate.status = 'confirmed'; // Change status from 'normal' to 'confirmed'
+            ticketToUpdate.seats = [seatInfoForThisTicket]; // Assign the specific seat
+            // ticketId remains the same
+            newlyCreatedTickets.push(ticketToUpdate);
+        } else {
+            // This case should ideally not happen if availability is checked correctly
+            // But as a fallback, create a new ticket object (though this might lead to overselling)
+            console.error("Overselling detected or no available ticket found! Please check availability logic.");
+            const ticketData = {
+                ticketId: `T${Date.now()}-${currentUser.username.slice(0,3)}-${i}-${Math.random().toString(36).substring(2,7)}`,
+                username: currentUser.username,
+                concertId: event.id,
+                sessionId: session.sessionId,
+                sectionId: selectedSection.sectionId,
+                purchaseTime: new Date().toISOString(),
+                paymentMethod: paymentMethodDesc,
+                status: 'confirmed',
+                seats: [seatInfoForThisTicket]
+            };
+            appDataRef.tickets.push(ticketData);
+            newlyCreatedTickets.push(ticketData);
+        }
     }
 
     saveDataCallbackRef();
 
     if (onPurchaseSuccessCallbackRef) {
-        onPurchaseSuccessCallbackRef(newlyCreatedTickets); // Pass the array of newly created tickets
+        onPurchaseSuccessCallbackRef(newlyCreatedTickets);
     }
     
     createModal('完成', `<p>成功使用 ${paymentMethodDesc} 購買 ${event.title} - ${new Date(session.dateTime).toLocaleDateString()} (${selectedSection.name || selectedSection.sectionId}) ${quantity} 張票券！</p>`, [{ text: '確定', onClick: () => removeModal() }]);
-    // modal overlay is replaced by the new modal, no need to remove here
 }

@@ -60,7 +60,7 @@ export let venues = [
 
 // Concerts database: id, title, venueId, organizerId, imageUrl, sessions[]
 // Each session: sessionId, dateTime, salesStartDateTime, salesEndDateTime, sections[]
-// Each session section: sectionId (matches venue.seatMap.id), price, ticketsAvailable, ticketsSold
+// Each session section: sectionId (matches venue.seatMap.id), price, ticketsAvailable
 export let concerts = [
   {
     id: 1,
@@ -77,10 +77,10 @@ export let concerts = [
         salesStartDateTime: "2025-05-20T12:00:00",
         salesEndDateTime: "2025-06-18T23:59:59",
         sections: [
-          { sectionId: "VIP", price: 5800, ticketsAvailable: 100, ticketsSold: 0 },
-          { sectionId: "A", price: 3800, ticketsAvailable: 500, ticketsSold: 0 },
-          { sectionId: "B", price: 2800, ticketsAvailable: 1000, ticketsSold: 0 },
-          { sectionId: "C", price: 1800, ticketsAvailable: 2000, ticketsSold: 0 }
+          { sectionId: "VIP", price: 5800, ticketsAvailable: 100 },
+          { sectionId: "A", price: 3800, ticketsAvailable: 500 },
+          { sectionId: "B", price: 2800, ticketsAvailable: 1000 },
+          { sectionId: "C", price: 1800, ticketsAvailable: 2000 }
         ]
       }
     ]
@@ -100,9 +100,9 @@ export let concerts = [
         salesStartDateTime: "2025-06-01T12:00:00",
         salesEndDateTime: "2025-07-31T23:59:59",
         sections: [
-          { sectionId: "VIP", price: 4800, ticketsAvailable: 200, ticketsSold: 0 },
-          { sectionId: "A", price: 3200, ticketsAvailable: 800, ticketsSold: 0 },
-          { sectionId: "B", price: 2200, ticketsAvailable: 1500, ticketsSold: 0 }
+          { sectionId: "VIP", price: 4800, ticketsAvailable: 200 },
+          { sectionId: "A", price: 3200, ticketsAvailable: 800 },
+          { sectionId: "B", price: 2200, ticketsAvailable: 1500 }
         ]
       }
     ]
@@ -122,9 +122,9 @@ export let concerts = [
         salesStartDateTime: "2025-06-10T12:00:00",
         salesEndDateTime: "2025-08-14T23:59:59",
         sections: [
-          { sectionId: "Rock", price: 5500, ticketsAvailable: 1000, ticketsSold: 0 },
-          { sectionId: "Zone1", price: 4500, ticketsAvailable: 1500, ticketsSold: 0 },
-          { sectionId: "Zone2", price: 3500, ticketsAvailable: 2000, ticketsSold: 0 }
+          { sectionId: "Rock", price: 5500, ticketsAvailable: 1000 },
+          { sectionId: "Zone1", price: 4500, ticketsAvailable: 1500 },
+          { sectionId: "Zone2", price: 3500, ticketsAvailable: 2000 }
         ]
       }
     ]
@@ -144,8 +144,8 @@ export let concerts = [
         salesStartDateTime: "2025-08-01T12:00:00",
         salesEndDateTime: "2025-09-04T23:59:59",
         sections: [
-          { sectionId: "Rock", price: 3800, ticketsAvailable: 2000, ticketsSold: 0 },
-          { sectionId: "Zone1", price: 2800, ticketsAvailable: 3000, ticketsSold: 0 }
+          { sectionId: "Rock", price: 3800, ticketsAvailable: 2000 },
+          { sectionId: "Zone1", price: 2800, ticketsAvailable: 3000 }
         ]
       }
     ]
@@ -165,9 +165,9 @@ export let concerts = [
         salesStartDateTime: "2025-08-15T12:00:00",
         salesEndDateTime: "2025-09-19T23:59:59",
         sections: [
-          { sectionId: "TBL", price: 1800, ticketsAvailable: 100, ticketsSold: 0 },
-          { sectionId: "CTR", price: 1500, ticketsAvailable: 30, ticketsSold: 0 },
-          { sectionId: "SOF", price: 1200, ticketsAvailable: 50, ticketsSold: 0 }
+          { sectionId: "TBL", price: 1800, ticketsAvailable: 100 },
+          { sectionId: "CTR", price: 1500, ticketsAvailable: 30 },
+          { sectionId: "SOF", price: 1200, ticketsAvailable: 50 }
         ]
       }
     ]
@@ -187,10 +187,10 @@ export let concerts = [
         salesStartDateTime: "2025-09-01T12:00:00",
         salesEndDateTime: "2025-10-09T23:59:59",
         sections: [
-          { sectionId: "VIP", price: 6200, ticketsAvailable: 150, ticketsSold: 0 },
-          { sectionId: "A", price: 4200, ticketsAvailable: 600, ticketsSold: 0 },
-          { sectionId: "B", price: 3200, ticketsAvailable: 1200, ticketsSold: 0 },
-          { sectionId: "C", price: 2200, ticketsAvailable: 2000, ticketsSold: 0 }
+          { sectionId: "VIP", price: 6200, ticketsAvailable: 150 },
+          { sectionId: "A", price: 4200, ticketsAvailable: 600 },
+          { sectionId: "B", price: 3200, ticketsAvailable: 1200 },
+          { sectionId: "C", price: 2200, ticketsAvailable: 2000 }
         ]
       }
     ]
@@ -210,9 +210,9 @@ export let concerts = [
         salesStartDateTime: "2025-10-01T12:00:00",
         salesEndDateTime: "2025-10-31T23:59:59",
         sections: [
-          { sectionId: "TBL", price: 2500, ticketsAvailable: 80, ticketsSold: 0 },
-          { sectionId: "CTR", price: 2000, ticketsAvailable: 40, ticketsSold: 0 },
-          { sectionId: "SOF", price: 1800, ticketsAvailable: 60, ticketsSold: 0 }
+          { sectionId: "TBL", price: 2500, ticketsAvailable: 80 },
+          { sectionId: "CTR", price: 2000, ticketsAvailable: 40 },
+          { sectionId: "SOF", price: 1800, ticketsAvailable: 60 }
         ]
       }
     ]
@@ -279,10 +279,9 @@ export let tickets = [
     paymentMethod: "credit_card",
     status: "confirmed",
     seats: [
-      { row: 10, seat: 5, label: "10排5號" },
-      { row: 10, seat: 6, label: "10排6號" }
+      { row: 10, seat: 5, label: "10排5號" }
     ],
-    totalPrice: 7600
+    totalPrice: 3800
   },
   {
     ticketId: 'T1750169000002-user2-0-t7pde',
@@ -294,10 +293,9 @@ export let tickets = [
     paymentMethod: "line_pay",
     status: "pending",
     seats: [
-      { row: 1, seat: 1, label: "1排1號" },
-      { row: 1, seat: 2, label: "1排2號" }
+      { row: 1, seat: 1, label: "1排1號" }
     ],
-    totalPrice: 9600
+    totalPrice: 4800
   },
   {
     ticketId: 'T1750169000003-user1-0-t7pdf',
@@ -310,9 +308,8 @@ export let tickets = [
     status: "confirmed",
     seats: [
       { row: 1, seat: 1, label: "搖滾區-1" },
-      { row: 1, seat: 2, label: "搖滾區-2" }
     ],
-    totalPrice: 11000
+    totalPrice: 5500
   },
   {
     ticketId: 'T1750169000004-user2-0-t7pdg',
@@ -324,9 +321,8 @@ export let tickets = [
     paymentMethod: "credit_card",
     status: "confirmed",
     seats: [
-      { row: 15, seat: 10, label: "15排10號" },
-      { row: 15, seat: 11, label: "15排11號" }
+      { row: 15, seat: 10, label: "15排10號" }
     ],
-    totalPrice: 5600
+    totalPrice: 3800
   }
 ];
