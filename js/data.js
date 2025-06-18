@@ -14,8 +14,9 @@ export let users = [
   {username: 'org2', password: 'org234', roles: ['organizer'], email: 'org2@example.com', name: 'Organizer Two'},
   {username: 'user1', password: 'user123', roles: ['spectator'], email: 'user1@example.com', name: 'User One'},
   {username: 'user2', password: 'user234', roles: ['spectator'], email: 'user2@example.com', name: 'User Two'},
+  {username: 'staff1', password: 'staff123', roles: ['staff'], email: 'staff1@example.com', name: 'Staff One'},
   {username: 'multiuser', password: 'multi123', roles: ['admin','organizer'], email: 'multi@example.com', name: 'Multi Role User'},
-  {username: 'super', password: 'super123', roles: ['admin', 'organizer', 'spectator'], email: 'super@example.com', name: 'Super User'}
+  {username: 'super', password: 'super123', roles: ['admin', 'organizer', 'spectator', 'staff'], email: 'super@example.com', name: 'Super User'}
 ];
 
 // Venues database: id, name, location, capacity, seatMap[]
@@ -254,7 +255,7 @@ export let tickets = [
   },
   // super 預設一張對號入座票（VIP區）
   {
-    ticketId: 'T1750168345240-sup-0-t7pdb',
+    ticketId: 'T1750168345240-sup-0-t7pdc',
     username: "super",
     concertId: 1,
     sessionId: "1-1",
@@ -269,7 +270,7 @@ export let tickets = [
   },
   // Example: user1 bought 2 tickets for concert 1, session 1-1, section A (numbered)
   {
-    ticketId: 1,
+    ticketId: 'T1750169000001-user1-0-t7pdd',
     username: "user1",
     concertId: 1,
     sessionId: "1-1",
@@ -284,7 +285,7 @@ export let tickets = [
     totalPrice: 7600
   },
   {
-    ticketId: 2,
+    ticketId: 'T1750169000002-user2-0-t7pde',
     username: "user2",
     concertId: 2,
     sessionId: "2-1",
@@ -299,7 +300,7 @@ export let tickets = [
     totalPrice: 9600
   },
   {
-    ticketId: 3,
+    ticketId: 'T1750169000003-user1-0-t7pdf',
     username: "user1",
     concertId: 3,
     sessionId: "3-1",
@@ -314,7 +315,7 @@ export let tickets = [
     totalPrice: 11000
   },
   {
-    ticketId: 4,
+    ticketId: 'T1750169000004-user2-0-t7pdg',
     username: "user2",
     concertId: 4,
     sessionId: "4-1",

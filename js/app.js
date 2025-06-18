@@ -8,6 +8,8 @@ import { initUserModule, renderSpectatorDashboardUI } from './user.js';
 import { initTicketingModule } from './ticketing.js';
 import { initRefundModule } from './refund.js';
 import { initPaymentModule } from './payment.js'; // Import payment module
+import { initStaffModule, renderStaffDashboardUI } from './staff.js';
+import { initVerificationModule } from './verification.js';
 
 // Current logged in user and selected role
 let currentUser = null;
@@ -155,6 +157,9 @@ function renderDashboard() {
     case 'organizer':
       renderOrganizerDashboardUI();
       break;
+    case 'staff':
+      renderStaffDashboardUI();
+      break;
     case 'spectator':
       // renderSpectatorDashboard(); // Replaced by user module
       renderSpectatorDashboardUI();
@@ -264,6 +269,8 @@ function renderDashboard() {
       // Pass appData and necessary callbacks to other modules
       const appData = { users, venues, concerts, tickets };
 
+      initVerificationModule(appData, saveData);
+
       // Ensure getCurrentUser is correctly passed to initTicketingModule
       initTicketingModule(appData, saveData, getCurrentUser, () => {
         renderDashboard(); // Refresh dashboard after purchase
@@ -300,6 +307,8 @@ function renderDashboard() {
       // initPaymentModule(appData, saveData, getCurrentUser);
       // Corrected call to initPaymentModule:
       initPaymentModule(appData, saveData, getCurrentUser);
+
+      initStaffModule(mainContent, appData, saveData);
 
       if (currentUser && currentRole) {
         renderDashboard();

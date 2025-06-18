@@ -342,12 +342,28 @@ function renderMyTickets(containerElement) {
         }
         actionsDiv.appendChild(refundBtn);
 
-        // 領票按鈕：演唱會前3天內才可領票與產生QRcode
+        // 領票按鈕：演唱會前3天內才可領票與產生QRcode，且票券未被使用
         const canClaim = (diffDays < 3 && diffDays >= 0 && (t.status === 'normal' || t.status === 'confirmed'));
         const claimBtn = document.createElement('button');
         claimBtn.className = 'small-btn claim-ticket-btn';
         claimBtn.textContent = '領票';
-        if (!canClaim) {
+        if (t.status === 'used') {
+            claimBtn.style.background = '#ccc';
+            claimBtn.style.color = '#888';
+            // 不設 disabled，讓使用者可點擊彈窗
+            claimBtn.title = '本票券已經使用，請洽詢工作人員。';
+            claimBtn.onclick = () => {
+                createModal('提示', `\
+                  <div style='padding:1rem 0;'>本票券已經使用，請洽詢工作人員。</div>\
+                  <div style='text-align:right;'><button id='modal-ok' style='background:#888;'>確定</button></div>\
+                `);
+                setTimeout(() => {
+                  document.getElementById('modal-ok').onclick = () => {
+                    import('./ui.js').then(mod => mod.removeModal());
+                  };
+                }, 0);
+            };
+        } else if (!canClaim) {
             claimBtn.style.background = '#ccc';
             claimBtn.style.color = '#888';
             claimBtn.title = '僅限演唱會前三天可領票';
@@ -414,8 +430,10 @@ function renderMyTickets(containerElement) {
 }
 
 function handleShowTransferTicketModal(ticket, refreshCb) {
+    const ticketNo = ticket && ticket.ticketId ? ticket.ticketId : '';
+    const ticketInfoText = ticketNo ? `將票券 ${ticketNo} 轉移給哪個帳號？` : '將票券轉移給哪個帳號？';
     const modal = createModal('轉移票券', `\
-      <p>將票券 ${ticket.ticketId} 轉移給哪個帳號？</p>\
+      <p>${ticketInfoText}</p>\
       <input type="text" id="transferToUser" placeholder="輸入對方帳號">\
       <p id="transferError" class="error" style="display:none;"></p>\
       <div style='margin-top:1rem; text-align:right;'>\
@@ -431,9 +449,10 @@ function handleShowTransferTicketModal(ticket, refreshCb) {
             err.style.display = 'block';
             return;
         }
-        const userExists = appDataRef.users.find(u => u.username === targetUser);
+        // 只允許轉移給 roles 包含 'spectator' 的帳號
+        const userExists = appDataRef.users.find(u => u.username === targetUser && u.roles && u.roles.includes('spectator'));
         if (!userExists) {
-            err.textContent = '帳號不存在';
+            err.textContent = '帳號不存在或非一般觀眾帳號';
             err.style.display = 'block';
             return;
         }

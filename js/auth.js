@@ -385,6 +385,7 @@ function roleNameDisplay(role) {
         case 'admin': return '管理者';
         case 'organizer': return '主辦方';
         case 'spectator': return '觀眾';
+        case 'staff': return '工作人員';
         default: return role;
     }
 }
