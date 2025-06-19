@@ -546,7 +546,6 @@ end
 ```plantuml
 @startuml
 title 驗證票券活動圖
-actor Staff
 start
 :工作人員使用裝置掃描票券 QR Code;
 :系統接收 QR Code 資料;

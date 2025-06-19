@@ -309,8 +309,38 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
                     return;
                 }
 
-                const shuffledAvailableSeats = [...availablePhysicalSeats].sort(() => 0.5 - Math.random());
-                assignedSeats = shuffledAvailableSeats.slice(0, requestedQuantity);
+                function chooseAdjacentSeats(availSeats, qty) {
+                    const rows = {};
+                    availSeats.forEach(seat => {
+                        if (!rows[seat.row]) rows[seat.row] = [];
+                        rows[seat.row].push(seat);
+                    });
+                    for (const row in rows) {
+                        rows[row].sort((a,b) => a.seat - b.seat);
+                        const seats = rows[row];
+                        for (let i = 0; i <= seats.length - qty; i++) {
+                            let block = [seats[i]];
+                            for (let j = 1; j < qty; j++) {
+                                if (seats[i+j].seat === seats[i].seat + j) {
+                                    block.push(seats[i+j]);
+                                } else {
+                                    block = [];
+                                    break;
+                                }
+                            }
+                            if (block.length === qty) return block;
+                        }
+                    }
+                    for (const row in rows) {
+                        if (rows[row].length >= qty) {
+                            return rows[row].slice(0, qty);
+                        }
+                    }
+                    const shuffled = [...availSeats].sort(() => 0.5 - Math.random());
+                    return shuffled.slice(0, qty);
+                }
+
+                assignedSeats = chooseAdjacentSeats(availablePhysicalSeats, requestedQuantity);
 
             } else { // manual (current test failure state)
                 if (selectedSeatsInfoDiv.textContent === '選位失敗 (測試中)' || selectedSeatsInfoDiv.textContent === '尚未選擇座位') {
