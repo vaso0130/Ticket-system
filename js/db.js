@@ -1,12 +1,29 @@
-// Placeholder for database connectivity
-// In a real deployment, replace these with API calls or DB client logic
+// Simple API wrapper to replace the previous localStorage-only approach.
+// By default it falls back to localStorage so existing code continues to work.
+const API_BASE = '/api';
+
 export async function fetchFromDB(key) {
-  // TODO: implement actual DB retrieval
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : null;
+  try {
+    const resp = await fetch(`${API_BASE}/data/${key}`);
+    if (!resp.ok) throw new Error('Network response was not ok');
+    return await resp.json();
+  } catch (err) {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  }
 }
 
 export async function saveToDB(key, value) {
-  // TODO: implement actual DB save
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    const resp = await fetch(`${API_BASE}/data/${key}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(value),
+    });
+    if (!resp.ok) throw new Error('Network response was not ok');
+  } catch (err) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
 }
