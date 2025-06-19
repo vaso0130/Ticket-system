@@ -9,42 +9,58 @@ This document contains the UML diagrams for the ticket system, including use cas
 ### Use Case Diagram
 ```plantuml
 @startuml
-left to right direction
-
-' Actor on the left
-actor "使用者" as User
-actor "管理員" as Admin
-' Actors on the right
-actor "主辦方" as org
-actor "工作人員" as stuff
-
-rectangle "會員/帳號管理" {
-  usecase "註冊" as register
-  usecase "登入" as login
-  usecase "檢視個人資料" as view_profile
-  usecase "編輯個人資料" as edit_profile
-  usecase "刪除帳號" as delete_account
-  usecase "新增/管理帳號" as manage_users
-
-  User -- register
-  User -- login
-  User -- view_profile
-  User -- edit_profile
-  User -- delete_account
-  
-  Admin -- login
-  Admin -- view_profile
-  Admin -- edit_profile
-  Admin -- manage_users
-
-  login -- org
-  view_profile -- org
-  edit_profile -- org
-
-  login -- stuff
-  view_profile -- stuff
-  edit_profile -- stuff
+top to bottom direction
+skinparam linetype ortho
+' 設定顏色
+skinparam rectangle {
+  BackgroundColor<<user>> #EAF4FF
+  BorderColor black
 }
+
+' 抽象角色
+actor "系統使用者\n(User)" as User
+
+' 具體角色
+actor "會員\n(Member)" as General
+actor "管理員\n(Admin)" as Admin
+actor "主辦方\n(Organizer)" as Organizer
+actor "工作人員\n(Staff)" as Staff
+
+' Use Case 區塊
+rectangle "<<user>> 會員功能" {
+  usecase "註冊\n(Register)" as UC1
+  usecase "登入\n(Login)" as UC2
+  usecase "檢視個人資料\n(View Profile)" as UC3
+  usecase "編輯個人資料\n(Edit Profile)" as UC4
+  usecase "刪除帳號\n(Delete Account)" as UC5
+  usecase "新增/管理帳號\n(Manage Users)" as UC6
+}
+
+' ⬇️ 繼承關係
+User <|-- General
+User <|-- Admin
+User <|-- Organizer
+User <|-- Staff
+
+' ⬇️ 功能對應
+General --> UC1
+General --> UC2
+General --> UC3
+General --> UC4
+General --> UC5
+
+Admin --> UC2
+Admin --> UC3
+Admin --> UC4
+Admin --> UC6
+
+Organizer --> UC2
+Organizer --> UC3
+Organizer --> UC4
+
+Staff --> UC2
+Staff --> UC3
+Staff --> UC4
 @enduml
 ```
 
@@ -101,7 +117,7 @@ title 登入活動圖
 start
 :使用者輸入信箱與密碼;
 :系統驗證輸入格式;
-if (格式是否正確?) then ([是])
+if () then ([是])
   :系統查詢資料庫中的使用者;
   if () then ([使用者存在])
     :驗證密碼;
@@ -487,11 +503,11 @@ start
 :會員請求退票訂單;
 :系統檢查票種狀態與取消政策;
 
-if (允許取消?) then ([是])
+if () then ([是])
 
   :檢查是否在可自動退票時限內;
 
-  if (在自動退票時限內?) then ([是])
+  if () then ([在自動退票時限內?])
     :更新訂單狀態為「已取消」;
     :處理退款 (如果適用);
     :發送取消確認通知;
@@ -499,7 +515,7 @@ if (允許取消?) then ([是])
   else ([超過自動退票時限])
     :將退票申請送審至管理員／主辦方;
     :管理員／主辦方審查退票;
-    if (審查通過?) then ([是])
+    if () then ([審查通過?])
       :更新訂單狀態為「已取消」;
       :處理退款 (如果適用);
       :發送取消確認通知;
@@ -586,47 +602,40 @@ end
 ```plantuml
 @startuml
 skinparam linetype polyline
-class Member {
+skinparam classAttributeIconSize 0
+
+' ==== 抽象父類 ====
+abstract class User {
   - id: String
   - name: String
   - email: String
   - password: String
-  - phone: String
-  - status: String
-  + register()
   + login()
+  + viewProfile()
   + editProfile()
+}
+
+' ==== 具體角色 ====
+class Member {
+  + register()
   + deleteAccount()
 }
 
 class Admin {
-  - id: String
-  - name: String
-  - email: String
-  - password: String
   + manageUsers()
-  + login()
 }
 
 class Organizer {
-  - id: String
-  - name: String
-  - email: String
-  - password: String
-  + manageConcerts()
 }
 
 class Staff {
-  - id: String
-  - name: String
-  - email: String
-  - password: String
-  + verifyTicket()
 }
 
-Member <|-- Admin
-Member <|-- Organizer
-Member <|-- Staff
+' ==== 繼承關係 ====
+User <|-- Member
+User <|-- Admin
+User <|-- Organizer
+User <|-- Staff
 @enduml
 ```
 
