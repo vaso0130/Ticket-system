@@ -46,6 +46,80 @@ export function initEventManagementModule(data, ui, saveDataFn, getCurrentUserFn
     });
 }
 
+// === 輔助函式：數字轉字母（1→A, 2→B, ...） ===
+function rowNumberToLetter(n) {
+    let s = '';
+    while (n > 0) {
+        n--;
+        s = String.fromCharCode(65 + (n % 26)) + s;
+        n = Math.floor(n / 26);
+    }
+    return s;
+}
+
+// === 高效重建所有可販售票券 ===
+export function fixAllSessionsTickets(appData) {
+    if (!appData.tickets) appData.tickets = [];
+
+    // 1. 分離已售出/預訂的票券與需重新計算的'normal'票券
+    const nonNormalTickets = appData.tickets.filter(t => t.status !== 'normal');
+    const newNormalTickets = [];
+
+    appData.concerts.forEach(event => {
+        event.sessions.forEach(session => {
+            session.sections.forEach(section => {
+                const venue = appData.venues.find(v => v.id === event.venueId);
+                const venueSection = venue ? venue.seatMap.find(s => s.id === section.sectionId) : null;
+
+                // 篩選出此特定區域已售出/預訂的票券
+                const soldTicketsInSection = nonNormalTickets.filter(t =>
+                    String(t.concertId) === String(event.id) &&
+                    String(t.sessionId) === String(session.sessionId) &&
+                    String(t.sectionId) === String(section.sectionId)
+                );
+
+                if (venueSection && venueSection.seatingType === 'numbered' && venueSection.rows && venueSection.seatsPerRow) {
+                    // 對號座：根據已售出的座位，產生剩餘座位的票券
+                    const soldSeats = soldTicketsInSection.flatMap(t => t.seats || []);
+
+                    for (let r = 1; r <= venueSection.rows; r++) {
+                        const rowLabel = rowNumberToLetter(r);
+                        for (let s = 1; s <= venueSection.seatsPerRow; s++) {
+                            const isSold = soldSeats.some(soldSeat => soldSeat.row === r && soldSeat.seat === s);
+                            if (!isSold) {
+                                newNormalTickets.push({
+                                    ticketId: `T${Date.now()}-${event.id}-${session.sessionId}-${section.sectionId}-${r}-${s}-${Math.random().toString(36).substr(2,5)}`,
+                                    username: null, concertId: event.id, sessionId: session.sessionId, sectionId: section.sectionId,
+                                    purchaseTime: null, paymentMethod: null, status: 'normal',
+                                    seats: [{ row: r, seat: s, label: `${rowLabel}排${s}號` }],
+                                    totalPrice: section.price
+                                });
+                            }
+                        }
+                    }
+                } else {
+                    // 自由座：根據總票數和已售出票數，產生剩餘數量的票券
+                    const soldCount = soldTicketsInSection.reduce((total, ticket) => total + (ticket.seats ? ticket.seats.length : 0), 0);
+                    const remainingAvailable = Math.max(0, section.ticketsAvailable - soldCount);
+
+                    for (let i = 0; i < remainingAvailable; i++) {
+                        newNormalTickets.push({
+                            ticketId: `T${Date.now()}-${event.id}-${session.sessionId}-${section.sectionId}-ga-${i}-${Math.random().toString(36).substr(2,5)}`,
+                            username: null, concertId: event.id, sessionId: session.sessionId, sectionId: section.sectionId,
+                            purchaseTime: null, paymentMethod: null, status: 'normal',
+                            seats: [{ type: 'generalAdmission', description: '自由座' }],
+                            totalPrice: section.price
+                        });
+                    }
+                }
+            });
+        });
+    });
+
+    // 3. 將 appData.tickets 設置為已售出票券加上新產生的可販售票券
+    appData.tickets.splice(0, appData.tickets.length, ...nonNormalTickets, ...newNormalTickets);
+}
+
 // --- Admin-specific event management UI ---
 // 2. renderAdminEventManagementUI: Added parentElement parameter.
 export function renderAdminEventManagementUI(parentElement, targetContainerId = 'adminContent') {
@@ -382,19 +456,42 @@ function handleSaveSessionFromModal(rolePrefix, parentListContainer) {
     // === 新增：自動產生預設票券 ===
     if (!em_appData.tickets) em_appData.tickets = [];
     sectionsData.forEach(section => {
-        for (let i = 0; i < section.ticketsAvailable; i++) {
-            em_appData.tickets.push({
-                ticketId: `T${Date.now()}-${eventId}-${sessionId}-${section.sectionId}-${i}-${Math.random().toString(36).substr(2,5)}`,
-                username: null, // 尚未分配
-                concertId: eventId,
-                sessionId: sessionId,
-                sectionId: section.sectionId,
-                purchaseTime: null,
-                paymentMethod: null,
-                status: 'normal',
-                seats: [],
-                totalPrice: section.price
-            });
+        const venueSection = em_appData.venues.find(v => v.id === event.venueId)?.seatMap.find(s => s.id === section.sectionId);
+        if (venueSection && venueSection.seatingType === 'numbered' && venueSection.rows && venueSection.seatsPerRow) {
+            // 對號座：每個座位都產生一張票券
+            for (let r = 1; r <= venueSection.rows; r++) {
+                const rowLabel = rowNumberToLetter(r);
+                for (let s = 1; s <= venueSection.seatsPerRow; s++) {
+                    em_appData.tickets.push({
+                        ticketId: `T${Date.now()}-${eventId}-${sessionId}-${section.sectionId}-${r}-${s}-${Math.random().toString(36).substr(2,5)}`,
+                        username: null,
+                        concertId: eventId,
+                        sessionId: sessionId,
+                        sectionId: section.sectionId,
+                        purchaseTime: null,
+                        paymentMethod: null,
+                        status: 'normal',
+                        seats: [{ row: r, seat: s, label: `${rowLabel}排${s}號` }],
+                        totalPrice: section.price
+                    });
+                }
+            }
+        } else {
+            // 自由座：產生 ticketsAvailable 數量的票券
+            for (let i = 0; i < section.ticketsAvailable; i++) {
+                em_appData.tickets.push({
+                    ticketId: `T${Date.now()}-${eventId}-${sessionId}-${section.sectionId}-${i}-${Math.random().toString(36).substr(2,5)}`,
+                    username: null,
+                    concertId: eventId,
+                    sessionId: sessionId,
+                    sectionId: section.sectionId,
+                    purchaseTime: null,
+                    paymentMethod: null,
+                    status: 'normal',
+                    seats: [{ type: 'generalAdmission', description: '自由座' }],
+                    totalPrice: section.price
+                });
+            }
         }
     });
     em_saveDataCallback();
@@ -406,6 +503,67 @@ function handleSaveSessionFromModal(rolePrefix, parentListContainer) {
         // Use parentListContainer for refreshing the list
         renderEventListInternal(parentListContainer, rolePrefix === 'Admin' ? 'eventListAdmin' : 'eventListOrg', rolePrefix === 'Admin');
     }, 1500);
+}
+
+/**
+ * 強制補齊指定場次、區域的所有可販售票券（對號座/自由座皆可）
+ * @param {Object} appData - 全域資料物件
+ * @param {String|Number} concertId
+ * @param {String|Number} sessionId
+ * @param {String|Number} sectionId
+ */
+export function fixSectionTickets(appData, concertId, sessionId, sectionId) {
+    if (!appData.tickets) appData.tickets = [];
+    // 先移除該區所有 normal 狀態的票券
+    appData.tickets = appData.tickets.filter(t =>
+        !(String(t.concertId) === String(concertId) &&
+          String(t.sessionId) === String(sessionId) &&
+          String(t.sectionId) === String(sectionId) &&
+          t.status === 'normal')
+    );
+    const event = appData.concerts.find(e => String(e.id) === String(concertId));
+    if (!event) return;
+    const session = event.sessions.find(s => String(s.sessionId) === String(sessionId));
+    if (!session) return;
+    const section = session.sections.find(sec => String(sec.sectionId) === String(sectionId));
+    if (!section) return;
+    const venue = appData.venues.find(v => v.id === event.venueId);
+    const venueSection = venue ? venue.seatMap.find(s => s.id === section.sectionId) : null;
+    if (venueSection && venueSection.seatingType === 'numbered' && venueSection.rows && venueSection.seatsPerRow) {
+        for (let r = 1; r <= venueSection.rows; r++) {
+            const rowLabel = rowNumberToLetter(r);
+            for (let s = 1; s <= venueSection.seatsPerRow; s++) {
+                appData.tickets.push({
+                    ticketId: `T${Date.now()}-${concertId}-${sessionId}-${sectionId}-${r}-${s}-${Math.random().toString(36).substr(2,5)}`,
+                    username: null,
+                    concertId,
+                    sessionId,
+                    sectionId,
+                    purchaseTime: null,
+                    paymentMethod: null,
+                    status: 'normal',
+                    seats: [{ row: r, seat: s, label: `${rowLabel}排${s}號` }],
+                    totalPrice: section.price
+                });
+            }
+        }
+    } else {
+        // 自由座
+        for (let i = 0; i < section.ticketsAvailable; i++) {
+            appData.tickets.push({
+                ticketId: `T${Date.now()}-${concertId}-${sessionId}-${sectionId}-${i}-${Math.random().toString(36).substr(2,5)}`,
+                username: null,
+                concertId,
+                sessionId,
+                sectionId,
+                purchaseTime: null,
+                paymentMethod: null,
+                status: 'normal',
+                seats: [{ type: 'generalAdmission', description: '自由座' }],
+                totalPrice: section.price
+            });
+        }
+    }
 }
 
 // 4. renderEventListInternal: Added searchScopeElement parameter.

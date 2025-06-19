@@ -120,64 +120,24 @@ export function processAtmPayment(modal, paymentDetails, onPurchaseSuccessCallba
 
 // Modified completePurchase to accept paymentDetails object
 function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSuccessCallbackRef) {
-    const { tickets } = appDataRef;
     const currentUser = getCurrentUserCallbackRef();
-    // Destructure all needed properties from paymentDetails, including the new seatingType
-    const { event, session, selectedSection, quantity, seats: assignedSeats, seatingType } = paymentDetails;
+    // Destructure all needed properties from paymentDetails
+    const { event, session, selectedSection, quantity, seats: assignedSeats } = paymentDetails;
 
     if (!event || !event.id) {
         console.error('Invalid event object in completePurchase:', event);
-    }
-
-    const concertToUpdate = appDataRef.concerts.find(c => c.id === event.id);
-    if (!concertToUpdate) {
-        console.error("Concert not found for updating ticket sales.");
-        createModal('錯誤', '<p>發生錯誤，無法完成購買。請稍後再試。(C01)</p>', [{ text: '確定', onClick: () => removeModal() }]);
-        removeModal(modal.overlay);
+        // Handle error appropriately
         return;
     }
-    const sessionToUpdate = concertToUpdate.sessions.find(s => s.sessionId === session.sessionId);
-    if (!sessionToUpdate) {
-        console.error("Session not found for updating ticket sales.");
-        createModal('錯誤', '<p>發生錯誤，無法完成購買。請稍後再試。(S01)</p>', [{ text: '確定', onClick: () => removeModal() }]);
-        removeModal(modal.overlay);
-        return;
-    }
-    const sectionToUpdate = sessionToUpdate.sections.find(sec => sec.sectionId === selectedSection.sectionId);
-    if (!sectionToUpdate) {
-        console.error("Section not found for updating ticket sales.");
-        createModal('錯誤', '<p>發生錯誤，無法完成購買。請稍後再試。(SEC01)</p>', [{ text: '確定', onClick: () => removeModal() }]);
-        removeModal(modal.overlay);
-        return;
-    }
-
-    // REMOVED: This is the source of the bug. The source of truth should be the tickets array.
-    // sectionToUpdate.ticketsSold += quantity;
 
     const newlyCreatedTickets = [];
-    // Find the highest existing ticket index for this section to avoid collisions
-    const existingTickets = appDataRef.tickets.filter(t => 
-        String(t.concertId) === String(event.id) &&
-        String(t.sessionId) === String(session.sessionId) &&
-        String(t.sectionId) === String(selectedSection.sectionId)
-    );
 
+    // Loop for each seat that was assigned/purchased
     for (let i = 0; i < quantity; i++) {
-        let seatInfoForThisTicket;
-        if (assignedSeats && assignedSeats[i]) {
-            seatInfoForThisTicket = assignedSeats[i];
-            if (seatInfoForThisTicket.row && typeof seatInfoForThisTicket.row === 'number') {
-                seatInfoForThisTicket.row = String.fromCharCode(65 + seatInfoForThisTicket.row - 1);
-            }
-            if (seatInfoForThisTicket.row && seatInfoForThisTicket.seat) {
-                seatInfoForThisTicket.label = `${seatInfoForThisTicket.row}排${seatInfoForThisTicket.seat}號`;
-            }
-        } else {
-            seatInfoForThisTicket = { type: 'generalAdmission', description: '自由座 (資訊缺失)' };
-        }
+        const seatInfoForThisTicket = assignedSeats[i];
 
-        // Find an available ticket to update, instead of creating a new one.
-        const availableTicketIndex = appDataRef.tickets.findIndex(t => 
+        // Find an available "template" ticket to convert into a purchased ticket
+        const availableTicketIndex = appDataRef.tickets.findIndex(t =>
             String(t.concertId) === String(event.id) &&
             String(t.sessionId) === String(session.sessionId) &&
             String(t.sectionId) === String(selectedSection.sectionId) &&
@@ -185,39 +145,31 @@ function completePurchase(paymentDetails, paymentMethodDesc, modal, onPurchaseSu
         );
 
         if (availableTicketIndex !== -1) {
-            // Update the existing ticket
+            // Found a template ticket, let's update it
             const ticketToUpdate = appDataRef.tickets[availableTicketIndex];
             ticketToUpdate.username = currentUser.username;
             ticketToUpdate.purchaseTime = new Date().toISOString();
             ticketToUpdate.paymentMethod = paymentMethodDesc;
-            ticketToUpdate.status = 'confirmed'; // Change status from 'normal' to 'confirmed'
-            ticketToUpdate.seats = [seatInfoForThisTicket]; // Assign the specific seat
-            // ticketId remains the same
+            ticketToUpdate.status = 'confirmed'; // This is what makes it "sold"
+            ticketToUpdate.seats = [seatInfoForThisTicket]; // Assign the single seat
+            
             newlyCreatedTickets.push(ticketToUpdate);
         } else {
-            // This case should ideally not happen if availability is checked correctly
-            // But as a fallback, create a new ticket object (though this might lead to overselling)
+            // This is a critical error. It means the UI allowed the user to buy a ticket
+            // but the backend couldn't find a corresponding template ticket to "sell".
             console.error("Overselling detected or no available ticket found! Please check availability logic.");
-            const ticketData = {
-                ticketId: `T${Date.now()}-${currentUser.username.slice(0,3)}-${i}-${Math.random().toString(36).substring(2,7)}`,
-                username: currentUser.username,
-                concertId: event.id,
-                sessionId: session.sessionId,
-                sectionId: selectedSection.sectionId,
-                purchaseTime: new Date().toISOString(),
-                paymentMethod: paymentMethodDesc,
-                status: 'confirmed',
-                seats: [seatInfoForThisTicket]
-            };
-            appDataRef.tickets.push(ticketData);
-            newlyCreatedTickets.push(ticketData);
+            createModal('錯誤', '<p>非常抱歉，發生超賣或無可用票券的錯誤。您的交易尚未完成，請重新再試。</p>', [{ text: '確定', onClick: () => removeModal() }]);
+            // Since this is a critical failure, we should not proceed.
+            // We don't save the partially processed tickets.
+            removeModal(modal.overlay); // Clean up the current modal
+            return; // Exit the function to prevent partial purchase
         }
     }
 
     saveDataCallbackRef();
 
     if (onPurchaseSuccessCallbackRef) {
-        onPurchaseSuccessCallbackRef(newlyCreatedTickets);
+        onPurchaseSuccessCallbackRef(newlyCreatedTickets); // Pass the array of newly created tickets
     }
     
     createModal('完成', `<p>成功使用 ${paymentMethodDesc} 購買 ${event.title} - ${new Date(session.dateTime).toLocaleDateString()} (${selectedSection.name || selectedSection.sectionId}) ${quantity} 張票券！</p>`, [{ text: '確定', onClick: () => removeModal() }]);

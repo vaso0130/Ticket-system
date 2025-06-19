@@ -106,13 +106,30 @@ function processRefundRequest(ticket, modal, refreshCb) { // ticket is a single 
     }, 1500);
 }
 
+function rowNumberToLetter(n) {
+    let s = '';
+    while (n > 0) {
+        n--;
+        s = String.fromCharCode(65 + (n % 26)) + s;
+        n = Math.floor(n / 26);
+    }
+    return s;
+}
+
 // 共用：產生退票審查清單項目
 export function createRefundReviewListItem(t, concerts, approveHandler, rejectHandler) {
     const concert = concerts.find(c => String(c.id) === String(t.concertId));
     // 取得座位資訊
     let seatInfo = '';
     if (t.seats && t.seats.length > 0) {
-        seatInfo = t.seats.map(s => s.label || (s.row && s.seat ? `${s.row}排${s.seat}號` : s.description || '')).join(', ');
+        seatInfo = t.seats.map(s => {
+            if (s.label) return s.label; // 優先使用 label
+            if (s.row && s.seat) {
+                const rowLabel = rowNumberToLetter(s.row);
+                return `${rowLabel}排${s.seat}號`;
+            }
+            return s.description || '';
+        }).join(', ');
     }
     // 申請時間
     let applyTime = t.refundRequestTime ? new Date(t.refundRequestTime).toLocaleString() : '-';

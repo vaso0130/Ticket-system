@@ -234,7 +234,7 @@ export let tickets = [
     paymentMethod: "credit_card",
     status: "confirmed",
     seats: [
-      { row: 'B', seat: 10, label: 'A排10號' }
+      { row: 2, seat: 10, label: 'B排10號' }
     ],
     totalPrice: 4800
   },
@@ -264,7 +264,7 @@ export let tickets = [
     paymentMethod: "credit_card",
     status: "confirmed",
     seats: [
-      { row: 'A', seat: 8, label: 'A排8號' }
+      { row: 1, seat: 8, label: 'A排8號' }
     ],
     totalPrice: 5800
   },
@@ -279,7 +279,7 @@ export let tickets = [
     paymentMethod: "credit_card",
     status: "confirmed",
     seats: [
-      { row: 10, seat: 5, label: "10排5號" }
+      { row: 10, seat: 5, label: "J排5號" }
     ],
     totalPrice: 3800
   },
@@ -293,7 +293,7 @@ export let tickets = [
     paymentMethod: "line_pay",
     status: "pending",
     seats: [
-      { row: 1, seat: 1, label: "1排1號" }
+      { row: 1, seat: 1, label: "A排1號" }
     ],
     totalPrice: 4800
   },
@@ -321,7 +321,7 @@ export let tickets = [
     paymentMethod: "credit_card",
     status: "confirmed",
     seats: [
-      { row: 15, seat: 10, label: "15排10號" }
+      { row: 15, seat: 10, label: "O排10號" }
     ],
     totalPrice: 3800
   }

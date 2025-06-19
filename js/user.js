@@ -286,10 +286,11 @@ function renderMyTickets(containerElement) {
             seatDisplay = '自由入座';
         } else if (t.seats && t.seats.length > 0) {
             seatDisplay = t.seats.map(s => {
-                if (typeof s === 'object' && s.row && s.seat) {
-                    return `${s.row}排${s.seat}號`;
-                } else if (typeof s === 'object' && s.label) {
-                    return s.label;
+                if (typeof s === 'object' && s.label) {
+                    return s.label; // 優先使用票券上已有的 label
+                } else if (typeof s === 'object' && s.row && s.seat) {
+                    const rowLabel = rowNumberToLetter(s.row);
+                    return `${rowLabel}排${s.seat}號`;
                 } else {
                     return s.toString();
                 }
@@ -492,5 +493,15 @@ function handleShowTransferTicketModal(ticket, refreshCb) {
         if (refreshCb) refreshCb();
         createModal('完成', '<p>票券已成功轉移。</p>', [{ text: '確定', onClick: () => removeModal() }]);
     };
+}
+
+function rowNumberToLetter(n) {
+    let s = '';
+    while (n > 0) {
+        n--;
+        s = String.fromCharCode(65 + (n % 26)) + s;
+        n = Math.floor(n / 26);
+    }
+    return s;
 }
 

@@ -10,6 +10,7 @@ import { initRefundModule } from './refund.js';
 import { initPaymentModule } from './payment.js'; // Import payment module
 import { initStaffModule, renderStaffDashboardUI } from './staff.js';
 import { initVerificationModule } from './verification.js';
+import { fixAllSessionsTickets } from './eventManagement.js';
 
 // Current logged in user and selected role
 let currentUser = null;
@@ -38,7 +39,10 @@ function getCurrentUser() { // Renamed for clarity and broader use
 async function saveData() {
   await saveToDB(STORAGE_KEYS.VENUES, venues);
   await saveToDB(STORAGE_KEYS.CONCERTS, concerts);
-  await saveToDB(STORAGE_KEYS.TICKETS, tickets);
+
+  // 只儲存已變更狀態的票券，以避免 LocalStorage 爆滿
+  const ticketsToSave = tickets.filter(t => t.status !== 'normal');
+  await saveToDB(STORAGE_KEYS.TICKETS, ticketsToSave);
   // Note: users data is not persisted to localStorage in this version
 }
 async function loadData() {
@@ -50,6 +54,11 @@ async function loadData() {
 
   const savedTickets = await fetchFromDB(STORAGE_KEYS.TICKETS);
   if (savedTickets) tickets.splice(0, tickets.length, ...savedTickets);
+
+  // 自動修復票券資料，確保每個座位都有對應的票券紀錄
+  console.log("Running ticket data consistency check...");
+  fixAllSessionsTickets({ concerts, tickets, venues });
+  console.log("Ticket data consistency check finished.");
 }
 
 // Save login & role to localStorage

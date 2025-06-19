@@ -241,7 +241,7 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
 
     modal.box.querySelector('#confirmBtnUser').onclick = async () => {
         const buyError = modal.box.querySelector('#buyErrorUser');
-        buyError.style.display = 'none'; // Reset error message
+        buyError.style.display = 'none';
 
         const selectedSectionId = sectionSelect.value;
         const concertEventSection = session.sections.find(sec => sec.sectionId === selectedSectionId);
@@ -258,113 +258,68 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
         }
 
         const seatingChoice = seatingChoiceSelect.value;
-        const currentUser = getCurrentUserCallbackRef(); // Get current user for ticket
 
-        if (venueSectionLayout.seatingType === 'numbered') {
-            if (seatingChoice === 'random') {
-                requestedQuantity = parseInt(quantityInput.value);
-                if (isNaN(requestedQuantity) || requestedQuantity < 1) {
-                    buyError.textContent = '請輸入有效的購買數量。';
-                    buyError.style.display = 'block';
-                    return;
-                }
-                const ticketsCurrentlySoldInEventSection = concertEventSection.ticketsSold;
-                const maxCapacityForEventSection = concertEventSection.ticketsAvailable;
-                if (requestedQuantity > (maxCapacityForEventSection - ticketsCurrentlySoldInEventSection)){
-                    buyError.textContent = `此區域隨機選位剩餘票數不足 (${maxCapacityForEventSection - ticketsCurrentlySoldInEventSection} 張)。`;
-                    buyError.style.display = 'block';
-                    return;
-                }
-                // Random seat assignment logic
-                const allPossibleSeats = [];
-                if (venueSectionLayout.rows && venueSectionLayout.seatsPerRow) {
-                    for (let r = 1; r <= venueSectionLayout.rows; r++) {
-                        for (let s = 1; s <= venueSectionLayout.seatsPerRow; s++) {
-                            allPossibleSeats.push({ row: r, seat: s, label: `${r}排${s}號` });
-                        }
-                    }
-                } else {
-                    buyError.textContent = '此區域座位配置資訊不完整，無法隨機選位。';
-                    buyError.style.display = 'block';
-                    return;
-                }
-
-                const bookedSeatsForThisSpecificSection = appDataRef.tickets
-                    .filter(t => 
-                        t.eventId === event.id && 
-                        t.sessionId === session.sessionId && 
-                        t.sectionId === selectedSectionId && 
-                        t.status === 'confirmed' // Only consider confirmed tickets
-                    )
-                    .flatMap(t => t.seats)
-                    .filter(s => s.type !== 'generalAdmission');
-
-                const availablePhysicalSeats = allPossibleSeats.filter(pSeat =>
-                    !bookedSeatsForThisSpecificSection.some(bSeat => bSeat.row === pSeat.row && bSeat.seat === pSeat.seat)
-                );
-
-                if (availablePhysicalSeats.length < requestedQuantity) {
-                    buyError.textContent = `此區域實際可選座位 (${availablePhysicalSeats.length}) 不足 ${requestedQuantity} 個。請減少數量或稍後再試。`;
-                    buyError.style.display = 'block';
-                    return;
-                }
-
-                function chooseAdjacentSeats(availSeats, qty) {
-                    const rows = {};
-                    availSeats.forEach(seat => {
-                        if (!rows[seat.row]) rows[seat.row] = [];
-                        rows[seat.row].push(seat);
-                    });
-                    for (const row in rows) {
-                        rows[row].sort((a,b) => a.seat - b.seat);
-                        const seats = rows[row];
-                        for (let i = 0; i <= seats.length - qty; i++) {
-                            let block = [seats[i]];
-                            for (let j = 1; j < qty; j++) {
-                                if (seats[i+j].seat === seats[i].seat + j) {
-                                    block.push(seats[i+j]);
-                                } else {
-                                    block = [];
-                                    break;
-                                }
-                            }
-                            if (block.length === qty) return block;
-                        }
-                    }
-                    for (const row in rows) {
-                        if (rows[row].length >= qty) {
-                            return rows[row].slice(0, qty);
-                        }
-                    }
-                    const shuffled = [...availSeats].sort(() => 0.5 - Math.random());
-                    return shuffled.slice(0, qty);
-                }
-
-                assignedSeats = chooseAdjacentSeats(availablePhysicalSeats, requestedQuantity);
-
-            } else { // manual (current test failure state)
-                if (selectedSeatsInfoDiv.textContent === '選位失敗 (測試中)' || selectedSeatsInfoDiv.textContent === '尚未選擇座位') {
-                    buyError.textContent = '請先完成自行選位或選擇系統隨機選位。';
-                    buyError.style.display = 'block';
-                    return;
-                }
-                buyError.textContent = '自行選位功能尚在開發中，無法透過此方式完成購買。';
+        // Determine requested quantity based on UI
+        if (venueSectionLayout.seatingType === 'numbered' && seatingChoice === 'manual') {
+            if (selectedSeatsInfoDiv.textContent === '選位失敗 (測試中)' || selectedSeatsInfoDiv.textContent === '尚未選擇座位') {
+                buyError.textContent = '請先完成自行選位或選擇系統隨機選位。';
                 buyError.style.display = 'block';
                 return;
             }
-        } else if (venueSectionLayout.seatingType === 'generalAdmission') {
+            // This part is not fully implemented, so we stop here for manual selection.
+            buyError.textContent = '自行選位功能尚在開發中，無法透過此方式完成購買。';
+            buyError.style.display = 'block';
+            return;
+        } else {
             requestedQuantity = parseInt(quantityInput.value);
             if (isNaN(requestedQuantity) || requestedQuantity < 1) {
                 buyError.textContent = '請輸入有效的購買數量。';
                 buyError.style.display = 'block';
                 return;
             }
-            const ticketsLeftInEventSection = concertEventSection.ticketsAvailable - concertEventSection.ticketsSold;
-            if (requestedQuantity > ticketsLeftInEventSection) {
-                buyError.textContent = `此區域剩餘票數不足 (${ticketsLeftInEventSection} 張)。`;
-                buyError.style.display = 'block';
-                return;
+        }
+
+        // --- UNIFIED AVAILABILITY CHECK ---
+        // Use the single source of truth to check if enough tickets are available to be sold.
+        const ticketsAvailable = getSectionAvailableCount(event.id, session.sessionId, selectedSectionId, appDataRef.tickets, concertEventSection.ticketsAvailable);
+        if (requestedQuantity > ticketsAvailable) {
+            buyError.textContent = `此區域剩餘票數不足 (僅剩 ${ticketsAvailable} 張)。`;
+            buyError.style.display = 'block';
+            return;
+        }
+        // --- END OF UNIFIED CHECK ---
+
+        let availableTickets = null;
+        if (venueSectionLayout.seatingType === 'numbered') {
+            // 直接從可販售票券中找連號座位
+            availableTickets = appDataRef.tickets.filter(t =>
+                String(t.concertId) === String(event.id) &&
+                String(t.sessionId) === String(session.sessionId) &&
+                String(t.sectionId) === String(selectedSectionId) &&
+                t.status === 'normal' && t.seats && t.seats.length === 1 && t.seats[0].row && t.seats[0].seat
+            );
+            // 依 row, seat 排序
+            availableTickets.sort((a, b) => {
+                if (a.seats[0].row !== b.seats[0].row) return a.seats[0].row - b.seats[0].row;
+                return a.seats[0].seat - b.seats[0].seat;
+            });
+            let found = false;
+            for (let i = 0; i <= availableTickets.length - requestedQuantity; i++) {
+                const block = availableTickets.slice(i, i + requestedQuantity);
+                const sameRow = block.every(t => t.seats[0].row === block[0].seats[0].row);
+                const consecutive = block.every((t, idx) => idx === 0 || t.seats[0].seat === block[0].seats[0].seat + idx);
+                if (sameRow && consecutive) {
+                    assignedSeats = block.map(t => t.seats[0]);
+                    found = true;
+                    break;
+                }
             }
+            if (!found) {
+                // 若找不到連號，則隨機取可用票券
+                assignedSeats = availableTickets.slice(0, requestedQuantity).map(t => t.seats[0]);
+            }
+        } else if (venueSectionLayout.seatingType === 'generalAdmission') {
+            // Availability is already checked above. Just create the seat objects.
             for (let i = 0; i < requestedQuantity; i++) {
                 assignedSeats.push({ type: 'generalAdmission', description: '自由座' });
             }
@@ -375,11 +330,19 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
         }
 
         if (assignedSeats.length === 0 && requestedQuantity > 0) {
+            // 增加詳細的日誌以供除錯
+            console.error('未能成功分配座位 - 除錯資訊:', {
+                sessionId: session.sessionId,
+                sectionId: selectedSectionId,
+                requestedQuantity: requestedQuantity,
+                availableTickets: availableTickets ? availableTickets.length : undefined,
+                assignedSeats: assignedSeats ? assignedSeats.length : undefined
+            });
             buyError.textContent = '未能成功分配座位，請檢查數量或選位方式並重試。';
             buyError.style.display = 'block';
             return;
         }
-        if (assignedSeats.length === 0) { // Should not happen if requestedQuantity > 0 and logic is correct
+        if (assignedSeats.length === 0) {
             buyError.textContent = '沒有選擇任何座位或有效數量。';
             buyError.style.display = 'block';
             return;
@@ -393,23 +356,20 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
         confirmBtn.disabled = true;
         confirmBtn.textContent = '處理中...';
 
-        // Simulate payment processing (replace with actual payment gateway integration later)
-        let paymentSuccess = false;
         try {
-            const paymentDetails = { 
-                event: event, 
-                session: session, 
-                selectedSection: concertEventSection, 
+            const paymentDetails = {
+                event: event,
+                session: session,
+                selectedSection: concertEventSection,
                 quantity: actualQuantityToPurchase,
-                seats: assignedSeats, // Pass assigned seats to payment and completion
-                seatingType: venueSectionLayout.seatingType // Pass seating type
+                seats: assignedSeats,
+                seatingType: venueSectionLayout.seatingType
             };
 
-            // Define onPurchaseSuccess within this scope or pass all necessary data to it
             const handlePurchaseSuccess = (createdTickets) => {
+                console.log("Purchase successful! Created tickets:", createdTickets);
                 // This function is now the callback for payment processing
                 // It receives the tickets created by completePurchase
-                console.log("Purchase successful! Created tickets:", createdTickets);
                 // Update UI or perform other actions as needed
                 // For example, re-render user tickets list or event list
                 if (typeof renderUserTickets === "function" && document.getElementById('userTickets')) {
@@ -436,18 +396,8 @@ export function handleShowBuyTicketModal(event, session) { // Modified to accept
             confirmBtn.textContent = '確定購買';
             return;
         }
-
-        // This part will now be handled by the onPurchaseSuccess callback passed to payment functions
-        /*
-        if (paymentSuccess) { 
-            // ... ticket creation and data saving ...
-            onPurchaseSuccess(newTicket, modal);
-        }
-        */
     };
 
     // Attach event listener for payment method change
 }
-
-// Removed the old onPurchaseSuccess function as its logic is now part of the callback passed to payment functions
 
